@@ -121,6 +121,8 @@
       /* The strip above the bottom bar, over the scene: the status line on the left, the people's key on the
          right, on one line where they fit and on two where they do not. Nothing in it takes taps. */
       .scene-foot { position: absolute; z-index: 1; left: 9px; right: 7px; bottom: 6px; display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 4px 16px; pointer-events: none; user-select: none; }
+      /* Over the camera's picture the line must read on any floor: light text on a dark, soft backing. */
+      body.camera #status:not(:empty) { color: #e8edf5; background: rgba(13, 16, 21, 0.62); padding: 4px 8px; border-radius: 8px; text-shadow: none; -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
       #status { flex: 1 1 240px; min-width: 0; max-width: 560px; font-size: 12px; line-height: 16px; color: var(--muted); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
       .end { display: flex; gap: 6px; align-items: center; margin-left: auto; flex: none; }
       /* On a narrow screen the status line steps aside, except in AR, where it says what to tap. */
@@ -173,6 +175,19 @@
         #toolbar button, #top button:not(.mode) { min-height: 38px; padding: 6px 12px; font-size: 14px; }
         #toolbar { --button-h: 38px; }
         .brand .name { font-size: 13px; }
+      }
+      /* A phone held upright: the title on a row of its own, never cut; under it VR · AR on the left
+         and the clock and Pause on the right. */
+      @media (orientation: portrait) and (max-width: 560px) {
+        #top { display: grid; grid-template-columns: auto 1fr auto; grid-template-areas: "name name name" "modes . sim"; align-items: center; row-gap: 6px; padding: 8px 8px 8px 12px; }
+        #top .brand { display: contents; }
+        #top .brand .name { grid-area: name; font-size: 16px; overflow: visible; }
+        #top .brand .modes { grid-area: modes; }
+        #top #simulation { grid-area: sim; }
+        #top #hub-state { display: none; }
+        #clock { flex-wrap: nowrap; min-height: 38px; height: 38px; }
+        #clock .sep { display: inline !important; } #clock .month { flex-basis: auto !important; }
+        #playback { min-height: 38px; height: 38px; }
       }
       /* A phone lying on its side in a browser with its own bars (Safari keeps its tabs and address
          over the page): little height is left, so the bars, the guide's toasts and the people's key
@@ -653,9 +668,9 @@
         @keyframes appear { from { opacity: 0; transform: translateY(-4px); } }
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-Bc_Rejo9.js"></script>
+    <script type="module" crossorigin src="./assets/index-CXdYQKJH.js"></script>
   </head>
-  <body data-version="00:24 · d86fb1e">
+  <body data-version="00:38 · 3e5dc63">
     <div id="app">
       <header id="top" class="surface">
         <div class="brand">
