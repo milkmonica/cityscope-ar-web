@@ -99,8 +99,17 @@
       #scene { position: relative; min-width: 0; min-height: 0; border-radius: var(--radius); overflow: hidden; }
       #scene canvas.view { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
 
-      /* The toolbar keeps to one row where it can: the line of status gives way first. */
-      #toolbar { display: flex; flex-wrap: nowrap; align-items: center; gap: 6px var(--gap); padding: 6px; min-width: 0; }
+      /* The toolbar keeps to one row where it can: the line of status gives way first. Three columns,
+         the outer two of equal width, so that Center view sits in the middle of the screen whatever
+         the groups at either side measure. */
+      #toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); grid-template-areas: "start center end"; align-items: center; gap: 6px var(--gap); padding: 6px; min-width: 0; }
+      #toolbar > .start { grid-area: start; display: flex; align-items: center; gap: 6px var(--gap); min-width: 0; }
+      #toolbar > .end { grid-area: end; justify-self: end; }
+      /* Center view: back to the whole model (the camera mode's zoom undone, the 3D view's framing), never the calibration. */
+      #toolbar > .center-view { grid-area: center; justify-self: center; width: 46px; height: 46px; min-height: 46px; padding: 0; border-radius: 8px; color: #9cd5e3; background: rgba(156, 213, 227, 0.08); border: 1px solid rgba(156, 213, 227, 0.45); }
+      #toolbar > .center-view svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+      #toolbar > .center-view:hover { background: rgba(156, 213, 227, 0.14); }
+      #toolbar > .center-view:focus-visible { outline: 2px solid #9cd5e3; outline-offset: 2px; }
       #toolbar nav, .shortcuts { display: flex; gap: 6px; align-items: center; flex: none; }
       /* The main bar's buttons: quiet and dark, plainly lit when their panel is open. Agents, at the right end, keeps the accent. */
       #toolbar nav button { background: rgba(29, 39, 53, 0.9); }
@@ -113,9 +122,13 @@
       /* On a narrow screen the controls take two rows and the status line steps aside, except in
          AR, where it says what to tap. */
       @media (max-width: 479px) {
-        #toolbar { flex-wrap: wrap; }
         #toolbar button { padding: 8px 10px; }
         #status { display: none; }
+      }
+      /* Too narrow for one row: Center view takes a row of its own, centred, above the other buttons. */
+      @media (max-width: 379px) {
+        #toolbar { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "center center" "start end"; }
+        body.ar #toolbar { grid-template-areas: "center center" "start end" "status status"; }
       }
       /* Where one row leaves the status line too little room to read, it steps aside too; in AR
          the toolbar takes a second row for it instead. */
@@ -123,8 +136,11 @@
       @container toolbar (max-width: 640px) {
         #status { display: none; }
       }
-      body.ar #toolbar { flex-wrap: wrap; }
-      body.ar #status { display: -webkit-box !important; flex-basis: 100%; order: 3; }
+      /* In AR the status line says what to tap: a row of its own across the bar. */
+      body.ar #toolbar { grid-template-areas: "start center end" "status status status"; }
+      body.ar #toolbar > .start { display: contents; }
+      body.ar #toolbar nav { grid-area: start; }
+      body.ar #status { display: -webkit-box !important; grid-area: status; }
 
       button, label.button, a.button {
         font: inherit; color: var(--text); cursor: pointer; min-height: 44px; padding: 8px 14px;
@@ -176,9 +192,9 @@
         #clock { font-size: 14px; }
         #people-key { font-size: 11px; line-height: 14px; gap: 2px 10px; }
         #people-key .label { display: none; }
-        body.camera #people-key { bottom: 48px; }
+        body.camera #people-key { bottom: calc(var(--bar-h, 36px) + 12px); }
         body.camera .guide-toast { margin: 44px 0; }
-        body.camera .window { top: 46px; max-height: calc(100% - 96px); }
+        body.camera .window { top: 46px; max-height: calc(100% - 58px - var(--bar-h, 36px)); }
       }
       @media (any-pointer: coarse) and (min-width: 700px) and (min-height: 600px) {
         #top, #toolbar, .window, .guide-toast { zoom: 1.3; }
@@ -190,13 +206,13 @@
       body.camera #top { top: max(var(--gap), env(safe-area-inset-top)); }
       body.camera #toolbar { bottom: max(var(--gap), env(safe-area-inset-bottom)); }
       body.camera #scene { border-radius: 0; }
-      body.camera .window { top: 64px; max-height: calc(100% - 140px); }
+      body.camera .window { top: 64px; max-height: calc(100% - 80px - var(--bar-h, 60px)); }
       body.camera .window.guide { top: 50%; }
-      body.camera .window.guide.compact { top: auto; bottom: 76px; }
+      body.camera .window.guide.compact { top: auto; bottom: calc(var(--bar-h, 60px) + 16px); }
       body.camera .window.guide.compact.top { top: 64px; bottom: auto; }
-      body.camera .guide-toast { margin: 64px 0; }
+      body.camera .guide-toast { margin: 64px 0 calc(var(--bar-h, 60px) + 8px); }
       /* The people's key stays right above the floating toolbar. */
-      body.camera #people-key { bottom: 76px; }
+      body.camera #people-key { bottom: calc(var(--bar-h, 60px) + 16px); }
       /* A phone lying on its side (landscape with little height): the scene takes the whole screen,
          and the title and the toolbar float over it, compact; windows and the guide keep clear of them. */
       @media (orientation: landscape) and (max-height: 560px) {
@@ -207,13 +223,13 @@
         #toolbar button, #top button { min-height: 34px; }
         #status, body.ar #status { display: none !important; }
         #scene { border-radius: 0; }
-        .window { top: 54px; max-height: calc(100% - 108px); }
+        .window { top: 54px; max-height: calc(100% - 66px - var(--bar-h, 42px)); }
         .window.guide { top: 50%; max-height: calc(100% - 108px); }
         /* Lying on its side, the steps that need the table in view go to a narrow panel on the left, without their drawing: the centre (and its cross) stays free. */
         .window.guide.compact, .window.guide.compact.top { top: 54px; bottom: auto; left: max(var(--gap), env(safe-area-inset-left)); transform: none; width: min(300px, 40%); max-height: calc(100% - 108px); }
         .guide.compact .art { display: none; }
         .guide.compact .body { grid-template-columns: minmax(0, 1fr); }
-        .guide-toast { bottom: 54px; }
+        .guide-toast { bottom: calc(var(--bar-h, 42px) + 12px); }
       }
       .guide > header { align-items: center; }
       .guide .guide-count { margin: 0; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
@@ -644,9 +660,9 @@
         @keyframes appear { from { opacity: 0; transform: translateY(-4px); } }
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-BjKkKUVS.js"></script>
+    <script type="module" crossorigin src="./assets/index-Bh3h_2cE.js"></script>
   </head>
-  <body data-version="00:00 · f632519">
+  <body data-version="00:11 · 44c4606">
     <div id="app">
       <header id="top" class="surface">
         <div class="brand">
@@ -1118,11 +1134,16 @@
       </main>
 
       <div id="toolbar" class="surface">
-        <nav aria-label="Main navigation">
-          <button id="open-views" aria-haspopup="dialog" aria-controls="window-views" aria-expanded="false">Views</button>
-          <button id="open-research" aria-haspopup="dialog" aria-controls="window-research" aria-expanded="false">Research</button>
-        </nav>
-        <span id="status" role="status"></span>
+        <div class="start">
+          <nav aria-label="Main navigation">
+            <button id="open-views" aria-haspopup="dialog" aria-controls="window-views" aria-expanded="false">Views</button>
+            <button id="open-research" aria-haspopup="dialog" aria-controls="window-research" aria-expanded="false">Research</button>
+          </nav>
+          <span id="status" role="status"></span>
+        </div>
+        <button id="center-view" class="center-view" type="button" aria-label="Center view" title="Center view">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3" /><circle cx="12" cy="12" r="2.2" /></svg>
+        </button>
         <div class="end">
           <button id="open-agents" class="agents" aria-haspopup="dialog" aria-controls="window-agents" aria-expanded="false">
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="7" r="3" /><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" /><circle cx="17" cy="8" r="2.4" /><path d="M16 14c2.8 0 5 2.2 5 5" /></svg>
