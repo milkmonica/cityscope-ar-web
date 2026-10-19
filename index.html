@@ -217,7 +217,7 @@
          scene, turned to read upright when the page does not turn with the phone, its sides on the screen's. */
       #ui-frame { display: none; }
       body.ui-framed #app { position: relative; }
-      body.ui-framed #ui-frame { display: block; position: absolute; left: 50%; top: 50%; z-index: 6; width: var(--frame-w, 100%); height: var(--frame-h, 100%); transform: translate(-50%, -50%) rotate(var(--ui-turn, 0deg)); transition: transform 0.25s ease; pointer-events: none; }
+      body.ui-framed #ui-frame { display: block; position: absolute; left: 50%; top: 50%; z-index: 6; width: var(--frame-w, 100%); height: var(--frame-h, 100%); transform: translate(-50%, -50%) rotate(var(--ui-turn, 0deg)); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); pointer-events: none; }
       @media (prefers-reduced-motion: reduce) { body.ui-framed #ui-frame { transition: none; } }
       #ui-frame > :not(.scene-foot) { pointer-events: auto; }
       body.ui-framed #top, body.ui-framed #toolbar { position: absolute; z-index: 6; left: var(--gap); right: var(--gap); }
@@ -695,9 +695,9 @@
         @keyframes appear { from { opacity: 0; transform: translateY(-4px); } }
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-DnXmtJS6.js"></script>
+    <script type="module" crossorigin src="./assets/index-D3b7KQpJ.js"></script>
   </head>
-  <body data-version="02:51 · 0d00c15">
+  <body data-version="03:03 · bd9da39">
     <div id="app">
       <header id="top" class="surface">
         <div class="brand">
