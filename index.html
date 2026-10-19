@@ -283,6 +283,8 @@
       .camera-layer.collecting { pointer-events: auto; cursor: crosshair; }
       /* The build's version (vite.config.ts), small in a corner, so a tester knows which one they see. */
       body[data-version]::after { content: "v " attr(data-version); position: fixed; right: max(4px, env(safe-area-inset-right)); bottom: max(1px, env(safe-area-inset-bottom)); z-index: 20; font-size: 9px; color: var(--muted); opacity: 0.7; pointer-events: none; }
+      /* ?diag: the camera mode's real sizes, small, over everything. */
+      .diag { position: fixed; left: 4px; top: 50%; z-index: 30; margin: 0; padding: 6px 8px; max-width: calc(100% - 8px); font: 10px/1.35 ui-monospace, monospace; color: #e8edf5; background: rgba(0, 0, 0, 0.72); border-radius: 6px; pointer-events: none; white-space: pre-wrap; }
       /* While the guide shows, the status line would repeat it. */
       body.guiding #status { visibility: hidden; }
       .guide .phone { animation: sway 2.6s ease-in-out infinite; transform-origin: 120px 64px; }
@@ -677,9 +679,9 @@
         @keyframes appear { from { opacity: 0; transform: translateY(-4px); } }
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-C3wDXrM7.js"></script>
+    <script type="module" crossorigin src="./assets/index-DZIOiR3Y.js"></script>
   </head>
-  <body data-version="00:59 · 96e8ee1">
+  <body data-version="01:20 · 5eddaf7">
     <div id="app">
       <header id="top" class="surface">
         <div class="brand">
