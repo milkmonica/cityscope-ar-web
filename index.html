@@ -209,9 +209,6 @@
         .brand button.mode { min-height: 26px !important; padding: 2px 9px !important; font-size: 12px !important; }
         #clock { font-size: 14px; }
         #people-key { font-size: 11px; line-height: 14px; gap: 2px 10px; }
-        body.camera .scene-foot { bottom: calc(var(--bar-h, 36px) + 12px); }
-        body.camera .guide-toast { margin: 44px 0; }
-        body.camera .window { top: calc(var(--top-h, 52px) + 12px); max-height: calc(100% - var(--top-h, 52px) - var(--bar-h, 60px) - 32px); }
       }
       @media (any-pointer: coarse) and (min-width: 700px) and (min-height: 600px) {
         #top, #toolbar, .window, .guide-toast { zoom: 1.3; }
@@ -219,18 +216,22 @@
       /* The adaptive interface in AR (src/uiTurn.ts): the bars, windows and guide in a frame over the
          scene, turned to read upright when the page does not turn with the phone, its sides on the screen's. */
       #ui-frame { display: none; }
+      body.ui-framed #app { position: relative; }
       body.ui-framed #ui-frame { display: block; position: absolute; left: 50%; top: 50%; z-index: 6; width: var(--frame-w, 100%); height: var(--frame-h, 100%); transform: translate(-50%, -50%) rotate(var(--ui-turn, 0deg)); transition: transform 0.25s ease; pointer-events: none; }
       @media (prefers-reduced-motion: reduce) { body.ui-framed #ui-frame { transition: none; } }
       #ui-frame > :not(.scene-foot) { pointer-events: auto; }
       body.ui-framed #top, body.ui-framed #toolbar { position: absolute; z-index: 6; left: var(--gap); right: var(--gap); }
-      body.ui-framed #top { top: max(var(--gap), env(safe-area-inset-top)); }
+      /* The title bar right at the top edge: no room is kept for the front camera's cutout (nothing is pressed there). */
+      body.ui-framed #top { top: var(--gap); }
       body.ui-framed #toolbar { bottom: max(var(--gap), env(safe-area-inset-bottom)); }
-      body.ui-framed .window { top: calc(var(--top-h, 52px) + 12px); max-height: calc(100% - var(--top-h, 52px) - var(--bar-h, 60px) - 32px); }
-      body.ui-framed .window.guide { top: 50%; }
-      body.ui-framed .window.guide.compact { top: auto; bottom: calc(var(--bar-h, 60px) + 16px); }
-      body.ui-framed .window.guide.compact.top { top: calc(var(--top-h, 52px) + 12px); bottom: auto; }
-      body.ui-framed .guide-toast { margin: 64px 0 calc(var(--bar-h, 60px) + 8px); }
-      body.ui-framed .scene-foot { bottom: calc(var(--bar-h, 60px) + 16px); }
+      /* Windows between the two bars, wherever the bars really end (--top-end, --bar-space: uiTurn.ts). */
+      body.ui-framed .window { top: calc(var(--top-end, 60px) + 8px); max-height: calc(100% - var(--top-end, 60px) - var(--bar-space, 60px) - 16px); }
+      body.ui-framed .window.large:not(.compact) { height: min(700px, calc(100% - var(--top-end, 60px) - var(--bar-space, 60px) - 16px)); }
+      body.ui-framed .window.guide { top: calc(var(--top-end, 60px) + (100% - var(--top-end, 60px) - var(--bar-space, 60px)) / 2); }
+      body.ui-framed .window.guide.compact { top: auto; bottom: calc(var(--bar-space, 60px) + 8px); }
+      body.ui-framed .window.guide.compact.top { top: calc(var(--top-end, 60px) + 8px); bottom: auto; }
+      body.ui-framed .guide-toast { margin: 0; bottom: calc(var(--bar-space, 60px) + 8px); }
+      body.ui-framed .scene-foot { bottom: calc(var(--bar-space, 60px) + 8px); }
       /* Turned a quarter, the frame is wide and low, though the page is still upright: the bars in
          one row and compact, the guide's steps as a narrow panel at the left. */
       body.ui-sideways #top { display: flex; min-height: 38px; }
@@ -238,24 +239,13 @@
       body.ui-sideways #top .brand .name { font-size: 14px; overflow: hidden; }
       body.ui-sideways #top button, body.ui-sideways #toolbar button, body.ui-sideways #clock, body.ui-sideways #playback { min-height: 34px; height: auto; }
       body.ui-sideways #toolbar { --button-h: 34px; }
-      body.ui-sideways .window.guide.compact, body.ui-sideways .window.guide.compact.top { top: calc(var(--top-h, 52px) + 12px); bottom: auto; left: var(--gap); transform: none; width: min(300px, 40%); }
+      body.ui-sideways .window.guide.compact, body.ui-sideways .window.guide.compact.top { top: calc(var(--top-end, 60px) + 8px); bottom: auto; left: var(--gap); transform: none; width: min(300px, 40%); }
       body.ui-sideways .guide.compact .art { display: none; }
       body.ui-sideways .guide.compact .body { grid-template-columns: minmax(0, 1fr); }
-      /* The camera mode, as AR on Android: the camera's picture fills the whole screen, edge to edge,
-         and the title and the toolbar float over it; windows and the guide keep clear of them. */
+      /* The camera mode, as AR on Android: the camera's picture fills the whole screen, edge to edge; the bars
+         and windows float over it in the adaptive frame (body.ui-framed, above). */
       body.camera #app { position: relative; padding: 0; grid-template: "scene" minmax(0, 1fr) / minmax(0, 1fr); }
-      body.camera #top, body.camera #toolbar { position: absolute; z-index: 6; left: max(var(--gap), env(safe-area-inset-left)); right: max(var(--gap), env(safe-area-inset-right)); }
-      body.camera #top { top: max(var(--gap), env(safe-area-inset-top)); }
-      body.camera #toolbar { bottom: max(var(--gap), env(safe-area-inset-bottom)); }
       body.camera #scene { border-radius: 0; }
-      /* Windows open below the title bar (its real height: one row or two) and above the bottom bar. */
-      body.camera .window { top: calc(var(--top-h, 52px) + 12px); max-height: calc(100% - var(--top-h, 52px) - var(--bar-h, 60px) - 32px); }
-      body.camera .window.guide { top: 50%; }
-      body.camera .window.guide.compact { top: auto; bottom: calc(var(--bar-h, 60px) + 16px); }
-      body.camera .window.guide.compact.top { top: calc(var(--top-h, 52px) + 12px); bottom: auto; }
-      body.camera .guide-toast { margin: 64px 0 calc(var(--bar-h, 60px) + 8px); }
-      /* The people's key stays right above the floating toolbar. */
-      body.camera .scene-foot { bottom: calc(var(--bar-h, 60px) + 16px); }
       /* A phone lying on its side (landscape with little height): the scene takes the whole screen,
          and the title and the toolbar float over it, compact; windows and the guide keep clear of them. */
       @media (orientation: landscape) and (max-height: 560px) {
@@ -705,9 +695,9 @@
         @keyframes appear { from { opacity: 0; transform: translateY(-4px); } }
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-BP6m2mRY.js"></script>
+    <script type="module" crossorigin src="./assets/index-DnXmtJS6.js"></script>
   </head>
-  <body data-version="02:36 · 5683984">
+  <body data-version="02:51 · 0d00c15">
     <div id="app">
       <header id="top" class="surface">
         <div class="brand">
