@@ -279,7 +279,6 @@
         #toolbar { --button-h: 34px; }
         #status, body.ar #status { display: none !important; }
         #scene { border-radius: 0; }
-        .window { top: calc(var(--top-h, 52px) + 12px); max-height: calc(100% - var(--top-h, 52px) - var(--bar-h, 60px) - 32px); }
         .window.guide { top: 50%; max-height: calc(100% - 108px); }
         /* Lying on its side, the steps that need the table in view go to a narrow panel on the left, without their drawing: the centre (and its cross) stays free. */
         .window.guide.compact, .window.guide.compact.top { top: 54px; bottom: auto; left: max(var(--gap), env(safe-area-inset-left)); transform: none; width: min(300px, 40%); max-height: calc(100% - 108px); }
@@ -357,10 +356,6 @@
       .window.side-right { left: auto; right: var(--gap); }
       /* The panels end above the people's key when it shows, so that they never cover it. */
       .window { max-height: calc(100% - 2 * var(--gap) - var(--key-room, 0px)); }
-      /* A phone on its side: Scene controls starts under the floating title bar (the rule above would put it under it), its header always in view. */
-      @media (orientation: landscape) and (max-height: 560px) {
-        .window.scene-controls { top: calc(var(--top-h, 52px) + 12px); max-height: calc(100% - var(--top-h, 52px) - var(--bar-h, 60px) - 32px); }
-      }
 
       /* The people's key: over the scene, right above the main bar, its right end on the Agents
          button's. Icons and words only: no background, no frame, nothing to press. */
@@ -395,6 +390,15 @@
         .window.large.compact { width: calc(100% - 2 * var(--gap)); max-height: 64%; }
       }
       .window.card { width: min(520px, calc(100% - 2 * var(--gap))); }
+      /* A phone on its side (3D view): every window opens between the floating title bar and the
+         toolbar, its header always in view and its body scrolling inside. After the rules above so
+         it wins over them; :where() adds no weight, so the guide's own placement still wins, and
+         AR and the camera mode keep their frame (body.ui-framed). */
+      @media (orientation: landscape) and (max-height: 560px) {
+        :where(body:not(.ui-framed)) .window { top: calc(var(--top-h, 52px) + 12px); max-height: calc(100% - var(--top-h, 52px) - var(--bar-h, 60px) - 32px); }
+        :where(body:not(.ui-framed)) .window.large.guide:not(.compact) { top: calc(var(--top-h, 52px) + 12px + (100% - var(--top-h, 52px) - var(--bar-h, 60px) - 32px) / 2); height: min(700px, calc(100% - var(--top-h, 52px) - var(--bar-h, 60px) - 32px)); }
+        :where(body:not(.ui-framed)) .window.large.compact { max-height: calc(100% - 54px - var(--bar-h, 60px) - 20px); }
+      }
       /* A window's header: its text, a flexible block starting at the content's left margin
          (the body's 16px), and its actions together at the top right: Back, then Close. */
       .window > header { flex: none; display: flex; align-items: flex-start; gap: 12px; padding: 6px 6px 6px 16px; border-bottom: 1px solid var(--line); }
@@ -719,9 +723,9 @@
         @keyframes appear { from { opacity: 0; transform: translateY(-4px); } }
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-DkDGobv0.js"></script>
+    <script type="module" crossorigin src="./assets/index-D7slzCyy.js"></script>
   </head>
-  <body data-version="16:27 · f815054">
+  <body data-version="16:38 · 81377f7">
     <div id="app">
       <header id="top" class="surface">
         <div class="brand">
