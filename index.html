@@ -44,6 +44,9 @@
         grid-template: "top" auto "scene" minmax(0, 1fr) "bar" auto / minmax(0, 1fr);
       }
       #top { grid-area: top; }
+      /* The two bars are rectangles with rounded corners, never pills: on a short bar (a phone on its side)
+         the panels' 15 px radius would round its ends right off. */
+      #top.surface, #toolbar.surface { border-radius: 10px; }
       #scene { grid-area: scene; }
       #toolbar { grid-area: bar; }
 
@@ -671,9 +674,9 @@
         @keyframes appear { from { opacity: 0; transform: translateY(-4px); } }
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-CsN_fFe8.js"></script>
+    <script type="module" crossorigin src="./assets/index-dErvt8kt.js"></script>
   </head>
-  <body data-version="00:55 · a990171">
+  <body data-version="00:57 · c5848c7">
     <div id="app">
       <header id="top" class="surface">
         <div class="brand">
