@@ -277,7 +277,8 @@
       }
       .guide-toast { position: absolute; left: 50%; bottom: var(--gap); transform: translateX(-50%); z-index: 5; margin: 0; padding: 10px 16px; width: max-content; max-width: calc(100% - 2 * var(--gap)); text-align: center; }
       /* The camera mode (src/cameraView.ts): the camera's picture behind the transparent scene, a layer over it for the corner taps, and numbered handles to drag. */
-      #scene video.camera-feed { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
+      /* The camera's video plays here but is drawn by the scene's canvas (main.ts, cameraBackdrop): kept in place, invisible. */
+      #scene video.camera-feed { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; opacity: 0; pointer-events: none; }
       body.camera #scene canvas.view { z-index: 1; }
       .camera-layer { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
       .camera-layer.collecting { pointer-events: auto; cursor: crosshair; }
@@ -679,9 +680,9 @@
         @keyframes appear { from { opacity: 0; transform: translateY(-4px); } }
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-DOrua289.js"></script>
+    <script type="module" crossorigin src="./assets/index-T-i2PUmt.js"></script>
   </head>
-  <body data-version="01:29 · 301434a">
+  <body data-version="02:01 · 36e8d51">
     <div id="app">
       <header id="top" class="surface">
         <div class="brand">
