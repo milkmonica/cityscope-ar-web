@@ -47,6 +47,9 @@
       /* The two bars are rectangles with rounded corners, never pills: on a short bar (a phone on its side)
          the panels' 15 px radius would round its ends right off. */
       #top.surface, #toolbar.surface { border-radius: 10px; }
+      /* The same air on every side of both bars, between their buttons and their edge. */
+      #top, #toolbar { --bar-pad: 5px; }
+      #top .brand .name { margin-left: 7px; }
       #scene { grid-area: scene; }
       #toolbar { grid-area: bar; }
 
@@ -59,7 +62,7 @@
         .surface { background: var(--panel-solid); }
       }
 
-      #top { display: flex; align-items: center; justify-content: space-between; gap: var(--gap); min-height: 44px; padding: 4px 6px 4px 12px; }
+      #top { display: flex; align-items: center; justify-content: space-between; gap: var(--gap); min-height: 44px; padding: var(--bar-pad); }
       .brand { display: flex; align-items: center; gap: 8px; min-width: 0; }
       .brand .name { font-size: 14px; font-weight: 650; letter-spacing: 0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .mode { flex: none; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; }
@@ -105,7 +108,7 @@
       /* The toolbar: Views and Research at the left, Agents at the right, and Center view in the
          middle of the room between them (as far from Research as from Agents). */
       /* The bottom bar matches the title bar: the same padding, and buttons as tall as Pause. */
-      #toolbar { --button-h: 36px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "start center end"; align-items: center; gap: 6px var(--gap); padding: 4px 6px; min-width: 0; }
+      #toolbar { --button-h: 36px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "start center end"; align-items: center; gap: 6px var(--gap); padding: var(--bar-pad); min-width: 0; }
       #toolbar button { min-height: var(--button-h); padding: 4px 12px; }
       #toolbar > .start { grid-area: start; display: flex; align-items: center; gap: 6px var(--gap); min-width: 0; }
       #toolbar > .end { grid-area: end; justify-self: end; }
@@ -184,7 +187,7 @@
       /* A phone held upright: the title on a row of its own, never cut; under it VR · AR on the left
          and the clock and Pause on the right. */
       @media (orientation: portrait) and (max-width: 560px) {
-        #top { display: grid; grid-template-columns: auto 1fr auto; grid-template-areas: "name name name" "modes . sim"; align-items: center; row-gap: 6px; padding: 8px 8px 8px 12px; }
+        #top { display: grid; grid-template-columns: auto 1fr auto; grid-template-areas: "name name name" "modes . sim"; align-items: center; row-gap: 6px; }
         #top .brand { display: contents; }
         #top .brand .name { grid-area: name; font-size: 16px; overflow: visible; }
         #top .brand .modes { grid-area: modes; }
@@ -198,8 +201,8 @@
          over the page): little height is left, so the bars, the guide's toasts and the people's key
          take as little of it as they can. Opened from the Home Screen there are no browser bars. */
       @media (orientation: landscape) and (max-height: 430px) {
-        #top { min-height: 32px !important; padding: 1px 4px 1px 8px !important; }
-        #toolbar { padding: 1px 4px !important; }
+        #top { min-height: 32px !important; }
+        #top, #toolbar { --bar-pad: 3px; }
         #toolbar button, #top button { min-height: 30px !important; padding: 3px 10px !important; font-size: 13px !important; }
         #toolbar { --button-h: 30px !important; }
         .brand .name { font-size: 12px; }
@@ -233,8 +236,8 @@
       @media (orientation: landscape) and (max-height: 560px) {
         #app { position: relative; grid-template: "scene" minmax(0, 1fr) / minmax(0, 1fr); }
         #top, #toolbar { position: absolute; z-index: 6; left: max(var(--gap), env(safe-area-inset-left)); right: max(var(--gap), env(safe-area-inset-right)); }
-        #top { top: max(var(--gap), env(safe-area-inset-top)); min-height: 38px; padding: 2px 4px 2px 10px; }
-        #toolbar { bottom: max(var(--gap), env(safe-area-inset-bottom)); padding: 3px 4px; }
+        #top { top: max(var(--gap), env(safe-area-inset-top)); min-height: 38px; }
+        #toolbar { bottom: max(var(--gap), env(safe-area-inset-bottom)); }
         #toolbar button, #top button { min-height: 34px; }
         #toolbar { --button-h: 34px; }
         #status, body.ar #status { display: none !important; }
@@ -674,9 +677,9 @@
         @keyframes appear { from { opacity: 0; transform: translateY(-4px); } }
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-dErvt8kt.js"></script>
+    <script type="module" crossorigin src="./assets/index-C3wDXrM7.js"></script>
   </head>
-  <body data-version="00:57 · c5848c7">
+  <body data-version="00:59 · 96e8ee1">
     <div id="app">
       <header id="top" class="surface">
         <div class="brand">
