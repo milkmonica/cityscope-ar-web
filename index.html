@@ -587,6 +587,17 @@
       .window > footer { flex: none; display: flex; flex-wrap: nowrap; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 6px 6px 14px; border-top: 1px solid var(--line); }
       .window > footer .primary { flex: none; white-space: nowrap; padding: 8px 12px; }
 
+      /* CityScope Unbound: each name with its contribution under it, then three short blocks, the words first. */
+      .unbound .lede { margin-top: 4px; color: var(--text); }
+      .contributions, .explore { display: grid; margin: 6px 0 16px; padding: 0; list-style: none; }
+      .contributions li { display: grid; gap: 2px; padding: 10px 0; border-top: 1px solid var(--line); }
+      .contributions li:last-child { border-bottom: 1px solid var(--line); }
+      .contributions b, .explore b { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+      .contributions span, .explore span { font-size: 14px; color: var(--muted); }
+      .explore { gap: 12px; }
+      .explore li { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 10px; align-items: start; }
+      .explore svg { grid-row: span 2; width: 18px; height: 18px; margin-top: 2px; fill: none; stroke: var(--accent); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; opacity: 0.85; }
+
       /* CityScope Volpe: four stages in a loop, two rows when the window is wide, one column when it is narrow. */
       .volpe h1 { margin: 4px 0 0; }
       .stage-cycle {
@@ -745,9 +756,9 @@
         @keyframes appear { from { opacity: 0; transform: translateY(-4px); } }
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-D5iyYORI.js"></script>
+    <script type="module" crossorigin src="./assets/index-BlZ1lr5t.js"></script>
   </head>
-  <body data-version="17:46 · 97f167c">
+  <body data-version="18:13 · 20cd774">
     <div id="app">
       <header id="top" class="surface">
         <div class="brand">
@@ -1197,6 +1208,26 @@
             <div class="sources">
               <a href="https://www.media.mit.edu/projects/conversational-spatial-analytics/overview/" target="_blank" rel="noopener noreferrer">Explore the project at MIT ↗</a>
             </div>
+          </div>
+        </section>
+
+        <!-- CityScope Unbound: this interface, an informative page that switches on nothing -->
+        <section id="window-unbound" class="window large surface guide research unbound" role="dialog" hidden>
+          <div class="body">
+            <p class="lede">“An interface that brings CityScope’s urban models, activity and research into one spatial experience, designed for exploration across screens and supported XR devices.”</p>
+            <h3>Credits</h3>
+            <ul class="contributions" aria-label="Credits">
+              <li><b>Mónica Gómez</b><span>Interface design &amp; UX</span></li>
+              <li><b>Felipe Rivera</b><span>Cross-platform stabilization</span></li>
+              <li><b>Thomas Sánchez</b><span>3D models</span></li>
+            </ul>
+            <h3>Explore through the interface</h3>
+            <ul class="explore">
+              <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5 9-5z" /><path d="M3 13l9 5 9-5" /></svg><b>Reveal the city</b><span>Explore point clouds, urban models and visual layers.</span></li>
+              <li><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="7" r="3" /><path d="M3 20v-1a6 6 0 0 1 12 0v1" /><circle cx="17" cy="9" r="2.4" /><path d="M16 14.2a4.8 4.8 0 0 1 5.5 4.8v1" /></svg><b>See urban life</b><span>Explore people, movement and activity over time.</span></li>
+              <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6.5C10 5 7 4.5 3.5 5v13.5C7 18 10 18.5 12 20c2-1.5 5-2 8.5-1.5V5C17 4.5 14 5 12 6.5z" /><path d="M12 6.5V20" /></svg><b>Connect to research</b><span>Discover the projects behind the visualizations.</span></li>
+            </ul>
+            <p class="note">The interface uses what this app already has: layers, agents and the research windows. Where a project's window says a part is illustrative or not built yet, that still holds here.</p>
           </div>
         </section>
 
