@@ -101,7 +101,9 @@
 
       /* The toolbar: Views and Research at the left, Agents at the right, and Center view in the
          middle of the room between them (as far from Research as from Agents). */
-      #toolbar { --button-h: 44px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "start center end"; align-items: center; gap: 6px var(--gap); padding: 6px; min-width: 0; }
+      /* The bottom bar matches the title bar: the same padding, and buttons as tall as Pause. */
+      #toolbar { --button-h: 36px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "start center end"; align-items: center; gap: 6px var(--gap); padding: 4px 6px; min-width: 0; }
+      #toolbar button { min-height: var(--button-h); padding: 4px 12px; }
       #toolbar > .start { grid-area: start; display: flex; align-items: center; gap: 6px var(--gap); min-width: 0; }
       #toolbar > .end { grid-area: end; justify-self: end; }
       /* Center view: back to the whole model (the camera mode's zoom undone, the 3D view's framing), never the calibration. */
@@ -194,7 +196,7 @@
          take as little of it as they can. Opened from the Home Screen there are no browser bars. */
       @media (orientation: landscape) and (max-height: 430px) {
         #top { min-height: 32px !important; padding: 1px 4px 1px 8px !important; }
-        #toolbar { padding: 2px 4px !important; }
+        #toolbar { padding: 1px 4px !important; }
         #toolbar button, #top button { min-height: 30px !important; padding: 3px 10px !important; font-size: 13px !important; }
         #toolbar { --button-h: 30px !important; }
         .brand .name { font-size: 12px; }
@@ -669,9 +671,9 @@
         @keyframes appear { from { opacity: 0; transform: translateY(-4px); } }
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-CijxmFOp.js"></script>
+    <script type="module" crossorigin src="./assets/index-CsN_fFe8.js"></script>
   </head>
-  <body data-version="00:53 · 14cc2b2">
+  <body data-version="00:55 · a990171">
     <div id="app">
       <header id="top" class="surface">
         <div class="brand">
