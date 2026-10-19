@@ -162,6 +162,10 @@
         #status { display: none; }
         body.ar #status, body.camera #status { display: -webkit-box; }
       }
+      /* Room for the line: the longest status text (the camera mode's, 119 characters) is about 625 px at this size, 640 with the backing's padding, so from 700 px up it takes one line (and 24 px of height) instead of two. */
+      @media (min-width: 700px) {
+        #status { display: block; max-width: 720px; white-space: nowrap; text-overflow: ellipsis; }
+      }
       /* Too narrow for one row (below 300 px): Center view takes a row of its own, centred, above the other buttons. */
       @media (max-width: 299px) {
         #toolbar { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "center center center" "start . end"; }
@@ -185,9 +189,13 @@
       .brand button.mode { min-height: 0; height: auto; margin: 0; background: transparent; cursor: pointer; }
       .brand button.mode:hover { color: var(--accent); border-color: var(--accent); }
       .brand .modes { display: flex; gap: 4px; }
+      /* Reset: an icon beside VR and AR; amber for the few seconds it waits for its second tap. */
+      .brand button.mode.reset { display: inline-flex; align-items: center; justify-content: center; padding: 4px 8px; }
+      .brand button.mode.reset svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+      .brand button.mode.reset.armed { color: #1b1304; background: var(--amber); border-color: var(--amber); }
       /* The view in use: filled, as the toolbar's pressed buttons. */
       .brand button.mode[aria-pressed="true"] { color: #071018; background: var(--accent); border-color: var(--accent); }
-      .window.guide { top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(560px, calc(100% - 2 * var(--gap))); z-index: 5; }
+      .window.guide:not(.research) { top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(560px, calc(100% - 2 * var(--gap))); z-index: 5; }
       .window.guide.compact { top: auto; bottom: var(--gap); transform: translateX(-50%); width: min(520px, calc(100% - 2 * var(--gap))); max-height: 46%; }
       .window.guide.compact.top { top: var(--gap); bottom: auto; }
       /* While the corners are tapped the strip never swallows a tap: a corner under it still counts; only its buttons take taps. */
@@ -248,8 +256,8 @@
       body.ui-framed #toolbar { bottom: max(var(--gap), env(safe-area-inset-bottom)); }
       /* Windows between the two bars, wherever the bars really end (--top-end, --bar-space: uiTurn.ts). */
       body.ui-framed .window { top: calc(var(--top-end, 60px) + 8px); max-height: calc(100% - var(--top-end, 60px) - var(--bar-space, 60px) - 16px); }
-      body.ui-framed .window.large:not(.compact) { height: min(700px, calc(100% - var(--top-end, 60px) - var(--bar-space, 60px) - 16px)); }
-      body.ui-framed .window.guide { top: calc(var(--top-end, 60px) + (100% - var(--top-end, 60px) - var(--bar-space, 60px)) / 2); }
+      body.ui-framed .window.large:not(.docked) { height: min(700px, calc(100% - var(--top-end, 60px) - var(--bar-space, 60px) - 16px)); }
+      body.ui-framed .window.guide:not(.research) { top: calc(var(--top-end, 60px) + (100% - var(--top-end, 60px) - var(--bar-space, 60px)) / 2); }
       body.ui-framed .window.guide.compact { top: auto; bottom: calc(var(--bar-space, 60px) + 8px); }
       body.ui-framed .window.guide.compact.top { top: calc(var(--top-end, 60px) + 8px); bottom: auto; }
       body.ui-framed .guide-toast { margin: 0; bottom: calc(var(--bar-space, 60px) + 8px); }
@@ -279,7 +287,7 @@
         #toolbar { --button-h: 34px; }
         #status, body.ar #status { display: none !important; }
         #scene { border-radius: 0; }
-        .window.guide { top: 50%; max-height: calc(100% - 108px); }
+        .window.guide:not(.research) { top: 50%; max-height: calc(100% - 108px); }
         /* Lying on its side, the steps that need the table in view go to a narrow panel on the left, without their drawing: the centre (and its cross) stays free. */
         .window.guide.compact, .window.guide.compact.top { top: 54px; bottom: auto; left: max(var(--gap), env(safe-area-inset-left)); transform: none; width: min(300px, 40%); max-height: calc(100% - 108px); }
         .guide.compact .art { display: none; }
@@ -307,7 +315,7 @@
       .guide-actions .primary { min-width: 9em; }
       /* Landscape with little height: the drawing beside the words, so nothing shrinks to illegible. */
       @media (orientation: landscape) and (max-height: 560px) {
-        .guide .body { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); align-items: center; }
+        .guide:not(.research) .body { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); align-items: center; }
         .window.guide.compact { max-height: 60%; }
         .guide.compact .art svg { max-width: 170px; }
       }
@@ -336,6 +344,11 @@
       }
       input[type="file"] { position: absolute; opacity: 0; width: 1px; height: 1px; }
       [hidden] { display: none !important; }
+      /* A wide, not short screen (a tablet): the drawing beside the words, wider, so the guide is low enough to need no scrolling. */
+      @media (min-width: 760px) and (min-aspect-ratio: 5 / 4) {
+        #guide:not(.compact) { width: min(760px, calc(100% - 2 * var(--gap))); }
+        #guide:not(.compact) .body { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); align-items: center; }
+      }
       .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
       /* The floating windows: over the scene, inside it, never part of the page's flow. Their
@@ -381,13 +394,20 @@
         #people-key { display: grid; grid-template-columns: auto auto; justify-content: end; justify-items: start; column-gap: 16px; }
       }
       .window.large { width: min(600px, calc(100% - 2 * var(--gap))); height: min(700px, calc(100% - 2 * var(--gap) - var(--key-room, 0px))); max-height: none; container: guide / size; }
-      /* With the voting demo on the table, its window gives the table room: on a wide scene it
-         steps aside, narrower, at full height; on an upright one it takes only the height it
-         needs, up to about two thirds of the scene. */
       #scene { container: scene / size; }
-      .window.large.compact { width: min(360px, calc(100% - 2 * var(--gap))); height: auto; max-height: calc(100% - 2 * var(--gap)); container-type: inline-size; }
+      /* The research windows open at the top right, so that the table shows beside them and what is
+         picked in them can be followed on it; their header drags them away (src/ui.ts). With the voting
+         demo on the table (docked) the window takes only the height its content needs; on an upright
+         scene it spans the width, at the top, and leaves the lower part of the table in view. */
+      .window.research { left: auto; right: var(--gap); width: min(400px, calc(100% - 2 * var(--gap))); }
+      .window.research.docked { height: auto; max-height: calc(100% - 2 * var(--gap) - var(--key-room, 0px)); container-type: inline-size; }
+      .window.research > header { cursor: grab; touch-action: none; }
+      .window.research > header button { cursor: pointer; }
+      .window.research.dragging { user-select: none; }
+      .window.research.dragging > header { cursor: grabbing; }
       @container scene (max-aspect-ratio: 1 / 1) {
-        .window.large.compact { width: calc(100% - 2 * var(--gap)); max-height: 64%; }
+        .window.research { left: var(--gap); right: auto; width: calc(100% - 2 * var(--gap)); height: min(700px, 58%); }
+        .window.research.docked { height: auto; max-height: 52%; }
       }
       .window.card { width: min(520px, calc(100% - 2 * var(--gap))); }
       /* A phone on its side (3D view): every window opens between the floating title bar and the
@@ -396,8 +416,10 @@
          AR and the camera mode keep their frame (body.ui-framed). */
       @media (orientation: landscape) and (max-height: 560px) {
         :where(body:not(.ui-framed)) .window { top: calc(var(--top-h, 52px) + 12px); max-height: calc(100% - var(--top-h, 52px) - var(--bar-h, 60px) - 32px); }
-        :where(body:not(.ui-framed)) .window.large.guide:not(.compact) { top: calc(var(--top-h, 52px) + 12px + (100% - var(--top-h, 52px) - var(--bar-h, 60px) - 32px) / 2); height: min(700px, calc(100% - var(--top-h, 52px) - var(--bar-h, 60px) - 32px)); }
-        :where(body:not(.ui-framed)) .window.large.compact { max-height: calc(100% - 54px - var(--bar-h, 60px) - 20px); }
+        :where(body:not(.ui-framed)) .window.large.guide:not(.compact):not(.research) { top: calc(var(--top-h, 52px) + 12px + (100% - var(--top-h, 52px) - var(--bar-h, 60px) - 32px) / 2); height: min(700px, calc(100% - var(--top-h, 52px) - var(--bar-h, 60px) - 32px)); }
+        /* The research windows keep their place at the top right, as tall as the room between the bars allows. */
+        :where(body:not(.ui-framed)) .window.research { height: min(700px, calc(100% - var(--top-h, 52px) - var(--bar-h, 60px) - 32px)); }
+        :where(body:not(.ui-framed)) .window.research.docked { height: auto; max-height: calc(100% - var(--top-h, 52px) - var(--bar-h, 60px) - 32px); }
       }
       /* A window's header: its text, a flexible block starting at the content's left margin
          (the body's 16px), and its actions together at the top right: Back, then Close. */
@@ -723,9 +745,9 @@
         @keyframes appear { from { opacity: 0; transform: translateY(-4px); } }
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-D7slzCyy.js"></script>
+    <script type="module" crossorigin src="./assets/index-DEg0vUS1.js"></script>
   </head>
-  <body data-version="16:38 · 81377f7">
+  <body data-version="16:47 · 1db3a2a">
     <div id="app">
       <header id="top" class="surface">
         <div class="brand">
@@ -733,6 +755,7 @@
           <div class="modes" role="group" aria-label="View">
             <button id="mode-vr" class="mode" aria-pressed="true" title="VR: the 3D view, free to turn and zoom">VR</button>
             <button id="guide-open" class="mode" aria-pressed="false" title="AR: place the city on the table; in AR, tap again to place it anew">AR</button>
+            <button id="reset-view" class="mode reset" type="button" aria-label="Reset the view" title="Reset: removes the model and the points and clears everything"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9" /><path d="M20 4v5h-5" /></svg></button>
           </div>
           <span id="context" class="visually-hidden" aria-live="polite"></span>
         </div>
@@ -867,7 +890,7 @@
         </section>
 
         <!-- CityScope Volpe: the published platform the project stands on -->
-        <section id="window-volpe" class="window large surface guide volpe" role="dialog" hidden>
+        <section id="window-volpe" class="window large surface guide research volpe" role="dialog" hidden>
           <div class="body volpe-view" data-view="architecture">
             <h1>Functional architecture</h1>
             <p class="lede">Four stages in a loop: the model, the changes people make to it, the simulation and its feedback.</p>
@@ -915,7 +938,7 @@
         </section>
 
         <!-- Pre-form -->
-        <section id="window-preform" class="window large surface guide" data-guide="preform" role="dialog" hidden>
+        <section id="window-preform" class="window large surface guide research" data-guide="preform" role="dialog" hidden>
           <div class="body page" data-page="table">
             <h1>Development on the site</h1>
             <p class="lede">Choose what is built on each of the site's five segments, and see it on the table.</p>
@@ -950,7 +973,7 @@
         </section>
 
         <!-- H-ABM -->
-        <section id="window-habm" class="window large surface guide" data-guide="habm" role="dialog" hidden>
+        <section id="window-habm" class="window large surface guide research" data-guide="habm" role="dialog" hidden>
           <div class="body page" data-page="table">
             <h1>The day on the table</h1>
             <p class="lede">Show the synthetic population moving through its day, and read what it is doing now.</p>
@@ -1021,7 +1044,7 @@
         </section>
 
         <!-- How do we decide? -->
-        <section id="window-vote" class="window large surface guide" data-guide="vote" role="dialog" hidden>
+        <section id="window-vote" class="window large surface guide research" data-guide="vote" role="dialog" hidden>
           <div class="body page" data-page="table">
             <h1>A vote on the table</h1>
             <p class="lede">Preview an example of one person's vote, split three ways, on the site.</p>
@@ -1112,7 +1135,7 @@
         </section>
 
         <!-- Where's my Jarvis? -->
-        <section id="window-jarvis" class="window large surface guide jarvis" data-guide="jarvis" role="dialog" hidden>
+        <section id="window-jarvis" class="window large surface guide research jarvis" data-guide="jarvis" role="dialog" hidden>
           <div class="body page" data-page="table">
             <h1>Try it on the table</h1>
             <p class="lede">Pick a request the app supports, and see the answer on the table.</p>
@@ -1236,6 +1259,6 @@
         </div>
       </div>
 
-    </div>
+    </div>
   </body>
 </html>
