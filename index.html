@@ -1,0 +1,1127 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+    <title>CityScope Volpe AR</title>
+    <!-- An installable web app; a demo, kept out of search engines. -->
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="theme-color" content="#0d1015" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+    <!-- Opened from the Home Screen, an iPhone shows the page without Safari's bars (Safari has no full screen for pages). -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="CityScope AR" />
+    <style>
+      :root {
+        --bg: #0d1015;
+        --panel: rgba(21, 28, 38, 0.9);
+        --panel-solid: #151c26;
+        --surface: #1d2735;
+        --strip: #202d3b;
+        --text: #e8edf5;
+        --muted: #a0adbf;
+        --line: #354154;
+        --accent: #53d4f5;
+        --violet: #b495ed;
+        --amber: #ebba72;
+        --radius: 15px;
+        --gap: 8px;
+        color-scheme: dark;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); }
+      body { font: 14px/1.45 system-ui, sans-serif; color: var(--text); }
+
+      /* One layout for every size: the scene with its title above and its toolbar below, and
+         the conversation beside it when there is room for both, or under it when there isn't. */
+      #app {
+        display: grid; height: 100dvh; gap: var(--gap);
+        padding: max(var(--gap), env(safe-area-inset-top)) max(var(--gap), env(safe-area-inset-right)) max(var(--gap), env(safe-area-inset-bottom)) max(var(--gap), env(safe-area-inset-left));
+        grid-template: "top" auto "scene" minmax(0, 1fr) "bar" auto / minmax(0, 1fr);
+      }
+      #top { grid-area: top; }
+      #scene { grid-area: scene; }
+      #toolbar { grid-area: bar; }
+
+      .surface {
+        background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+        -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+      }
+      /* Without blur the surface is solid instead, so that text stays readable over the camera. */
+      @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+        .surface { background: var(--panel-solid); }
+      }
+
+      #top { display: flex; align-items: center; justify-content: space-between; gap: var(--gap); min-height: 44px; padding: 4px 6px 4px 12px; }
+      .brand { display: flex; align-items: center; gap: 8px; min-width: 0; }
+      .brand .name { font-size: 14px; font-weight: 650; letter-spacing: 0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .mode { flex: none; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; }
+      #simulation { display: flex; gap: 6px; align-items: center; flex: none; }
+      /* The state hub's connection: a dot in its state's colour and a short line. */
+      #hub-state { flex: none; margin-left: auto; font-size: 12px; color: var(--muted); white-space: nowrap; }
+      #hub-state::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: currentColor; vertical-align: 0; }
+      #hub-state[data-status="connected"] { color: #7ee2a8; }
+      #hub-state[data-status="connecting"] { color: var(--muted); }
+      #hub-state[data-status="disconnected"], #hub-state[data-status="blocked"] { color: #ebba72; }
+      @media (max-width: 560px) { #hub-state { max-width: 40vw; overflow: hidden; text-overflow: ellipsis; } }
+      #clock { font: 600 16px/1 ui-monospace, monospace; color: var(--accent); min-width: 4.4em; display: inline-flex; flex-wrap: wrap; justify-content: center; align-items: center; align-content: center; column-gap: 6px; row-gap: 2px; }
+      #clock > span { line-height: 1; display: block; }
+      #clock .month { font: 500 13px/1 system-ui, sans-serif; color: var(--muted); }
+      #clock .sep { color: var(--muted); }
+      @media (max-width: 380px) { #clock .sep { display: none; } #clock .month { flex-basis: 100%; text-align: center; } }
+      /* Simulation time: the solar month on its own row, set off from the hours by a hairline. */
+      .solar-month { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; font-size: 15px; }
+      /* The solar month's picker (src/monthPicker.ts): a button, and a list of months floating over the page in the app's look. */
+      .solar-month .picker { min-height: 44px; min-width: 10.5em; display: inline-flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0 12px; font: 400 14px/1 system-ui, sans-serif; color: #e8edf5; border: 1px solid var(--line); border-radius: 8px; background: rgba(8, 11, 17, 0.6); }
+      .solar-month .picker[aria-expanded="true"] { border-color: #9cd5e3; }
+      .picker-chevron { color: #a0adbf; font-size: 11px; }
+      .picker-list {
+        position: fixed; z-index: 40; margin: 0; padding: 4px; list-style: none; overflow-y: auto; overscroll-behavior: contain;
+        font: 400 14px/1.3 system-ui, sans-serif; color: #e8edf5;
+        background: rgba(21, 28, 38, 0.92); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+        border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+        scrollbar-width: thin; scrollbar-color: rgba(160, 173, 191, 0.35) transparent;
+      }
+      .picker-list:focus { outline: none; }
+      .picker-option { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 44px; padding: 0 12px; border-radius: 6px; text-align: left; cursor: pointer; user-select: none; }
+      .picker-option.active, .picker-option:hover { background: rgba(156, 213, 227, 0.1); }
+      /* The keyboard's place in the list, always visible while the list has the focus. */
+      .picker-list:focus-visible .picker-option.active, .picker-list:focus .picker-option.active { box-shadow: inset 0 0 0 2px #9cd5e3; }
+      .picker-check { color: #9cd5e3; font-size: 13px; visibility: hidden; }
+      .picker-option[aria-selected="true"] .picker-check { visibility: visible; }
+      .window .divider { border: 0; border-top: 1px solid rgba(160, 173, 191, 0.18); margin: 12px 0 14px; }
+      #time-speeds { flex-wrap: wrap; }
+
+      #scene { position: relative; min-width: 0; min-height: 0; border-radius: var(--radius); overflow: hidden; }
+      #scene canvas.view { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+
+      /* The toolbar keeps to one row where it can: the line of status gives way first. */
+      #toolbar { display: flex; flex-wrap: nowrap; align-items: center; gap: 6px var(--gap); padding: 6px; min-width: 0; }
+      #toolbar nav, .shortcuts { display: flex; gap: 6px; align-items: center; flex: none; }
+      /* The main bar's buttons: quiet and dark, plainly lit when their panel is open. Agents, at the right end, keeps the accent. */
+      #toolbar nav button { background: rgba(29, 39, 53, 0.9); }
+      #toolbar nav button[aria-expanded="true"] { color: var(--accent); background: rgba(83, 212, 245, 0.16); border-color: var(--accent); }
+      #toolbar button.agents, #toolbar button.agents[aria-expanded="true"] { color: #10232c; background: #53d4f5; border-color: #53d4f5; font-weight: 650; }
+      #toolbar button.agents[aria-expanded="true"] { box-shadow: inset 0 0 0 2px #10232c; }
+      #toolbar button.agents svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+      #status { flex: 1 1 0; min-width: 0; font-size: 12px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+      .end { display: flex; gap: 6px; align-items: center; margin-left: auto; flex: none; }
+      /* On a narrow screen the controls take two rows and the status line steps aside, except in
+         AR, where it says what to tap. */
+      @media (max-width: 479px) {
+        #toolbar { flex-wrap: wrap; }
+        #toolbar button { padding: 8px 10px; }
+        #status { display: none; }
+      }
+      /* Where one row leaves the status line too little room to read, it steps aside too; in AR
+         the toolbar takes a second row for it instead. */
+      #toolbar { container: toolbar / inline-size; }
+      @container toolbar (max-width: 640px) {
+        #status { display: none; }
+      }
+      body.ar #toolbar { flex-wrap: wrap; }
+      body.ar #status { display: -webkit-box !important; flex-basis: 100%; order: 3; }
+
+      button, label.button, a.button {
+        font: inherit; color: var(--text); cursor: pointer; min-height: 44px; padding: 8px 14px;
+        border: 1px solid var(--line); border-radius: 10px; background: rgba(40, 52, 74, 0.55); text-decoration: none;
+        display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      }
+      button:focus-visible, label.button:focus-within, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+      button:disabled { opacity: 0.45; cursor: default; }
+      button[aria-pressed="true"], #toolbar button[aria-expanded="true"], [role="tab"][aria-selected="true"] { color: #071018; background: var(--accent); border-color: var(--accent); }
+      #clock[aria-expanded="true"] { border-color: var(--accent); background: rgba(83, 212, 245, 0.14); }
+      button.primary { color: #071018; background: var(--accent); border-color: var(--accent); font-weight: 600; }
+      button.quiet { min-height: 36px; padding: 4px 10px; background: transparent; }
+
+      /* The guided welcome: a Research-like window over the scene. Wide for the welcome and the
+         position; a compact strip at the bottom while the table must stay in view. */
+      /* The AR tag opens the guide: a pill like before, now a button. */
+      .brand button.mode { min-height: 0; height: auto; margin: 0; background: transparent; cursor: pointer; }
+      .brand button.mode:hover { color: var(--accent); border-color: var(--accent); }
+      .brand .modes { display: flex; gap: 4px; }
+      /* The view in use: filled, as the toolbar's pressed buttons. */
+      .brand button.mode[aria-pressed="true"] { color: #071018; background: var(--accent); border-color: var(--accent); }
+      .window.guide { top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(560px, calc(100% - 2 * var(--gap))); z-index: 5; }
+      .window.guide.compact { top: auto; bottom: var(--gap); transform: translateX(-50%); width: min(520px, calc(100% - 2 * var(--gap))); max-height: 46%; }
+      .window.guide.compact.top { top: var(--gap); bottom: auto; }
+      /* While the corners are tapped the strip never swallows a tap: a corner under it still counts; only its buttons take taps. */
+      .window.guide.compact { pointer-events: none; }
+      .window.guide.compact button { pointer-events: auto; }
+      /* Sizes by device, so every control is easy to hit: on a touch screen the title's VR · AR ·
+         Re-align are real buttons, not small tags; a phone gets slimmer bars that leave the city
+         room; a touch tablet (the Surface at 200%) gets everything larger. */
+      @media (any-pointer: coarse) {
+        .brand button.mode { min-height: 34px; padding: 4px 12px; font-size: 13px; }
+        .brand .modes { gap: 6px; }
+      }
+      @media (pointer: coarse) and (max-width: 560px), (pointer: coarse) and (max-height: 560px) {
+        #top { min-height: 40px; }
+        #toolbar button, #top button:not(.mode), .whole-table { min-height: 38px; padding: 6px 12px; font-size: 14px; }
+        .brand .name { font-size: 13px; }
+      }
+      /* A narrow phone has no room for the name beside VR · AR · Re-align: the buttons matter more. */
+      @media (pointer: coarse) and (max-width: 430px) { .brand .name { display: none; } }
+      @media (any-pointer: coarse) and (min-width: 700px) and (min-height: 600px) {
+        #top, #toolbar, .window, .guide-toast, .whole-table { zoom: 1.3; }
+      }
+      /* The camera mode, as AR on Android: the camera's picture fills the whole screen, edge to edge,
+         and the title and the toolbar float over it; windows and the guide keep clear of them. */
+      body.camera #app { position: relative; padding: 0; grid-template: "scene" minmax(0, 1fr) / minmax(0, 1fr); }
+      body.camera #top, body.camera #toolbar { position: absolute; z-index: 6; left: max(var(--gap), env(safe-area-inset-left)); right: max(var(--gap), env(safe-area-inset-right)); }
+      body.camera #top { top: max(var(--gap), env(safe-area-inset-top)); }
+      body.camera #toolbar { bottom: max(var(--gap), env(safe-area-inset-bottom)); }
+      body.camera #scene { border-radius: 0; }
+      body.camera .window { top: 64px; max-height: calc(100% - 140px); }
+      body.camera .window.guide { top: 50%; }
+      body.camera .window.guide.compact { top: auto; bottom: 76px; }
+      body.camera .window.guide.compact.top { top: 64px; bottom: auto; }
+      body.camera .whole-table, body.camera .guide-toast { margin: 64px 0; }
+      /* The people's key stays right above the floating toolbar. */
+      body.camera #people-key { bottom: 76px; }
+      /* A phone lying on its side (landscape with little height): the scene takes the whole screen,
+         and the title and the toolbar float over it, compact; windows and the guide keep clear of them. */
+      @media (orientation: landscape) and (max-height: 560px) {
+        #app { position: relative; grid-template: "scene" minmax(0, 1fr) / minmax(0, 1fr); }
+        #top, #toolbar { position: absolute; z-index: 6; left: max(var(--gap), env(safe-area-inset-left)); right: max(var(--gap), env(safe-area-inset-right)); }
+        #top { top: max(var(--gap), env(safe-area-inset-top)); min-height: 38px; padding: 2px 4px 2px 10px; }
+        #toolbar { bottom: max(var(--gap), env(safe-area-inset-bottom)); padding: 3px 4px; }
+        #toolbar button, #top button { min-height: 34px; }
+        #status, body.ar #status { display: none !important; }
+        #scene { border-radius: 0; }
+        .window { top: 54px; max-height: calc(100% - 108px); }
+        .window.guide { top: 50%; max-height: calc(100% - 108px); }
+        /* Lying on its side, the steps that need the table in view go to a narrow panel on the left, without their drawing: the centre (and its cross) stays free. */
+        .window.guide.compact, .window.guide.compact.top { top: 54px; bottom: auto; left: max(var(--gap), env(safe-area-inset-left)); transform: none; width: min(300px, 40%); max-height: calc(100% - 108px); }
+        .guide.compact .art { display: none; }
+        .guide.compact .body { grid-template-columns: minmax(0, 1fr); }
+        .guide-toast { bottom: 54px; }
+        .whole-table { top: 54px; }
+      }
+      /* After zooming in the camera mode: back to the whole table, top right of the scene. */
+      .whole-table { position: absolute; top: var(--gap); right: var(--gap); z-index: 4; min-height: 44px; padding: 0 16px; color: var(--text); }
+      .guide > header { align-items: center; }
+      .guide .guide-count { margin: 0; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+      .guide .body { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+      .guide .art { display: flex; justify-content: center; }
+      .guide .art canvas, .guide .art svg, .guide .art img { width: 100%; max-width: 360px; height: auto; display: block; }
+      /* Compact: the small drawing beside the words, so the instruction and its buttons fit without scrolling. */
+      .guide.compact .body { grid-template-columns: minmax(96px, 0.42fr) minmax(0, 1fr); align-items: center; gap: 12px; padding-top: 10px; padding-bottom: 10px; }
+      .guide.compact .art svg { max-width: 170px; }
+      .guide.compact .guide-actions { margin-top: 8px; }
+      .guide h1 { margin: 0; font-size: 20px; line-height: 1.25; font-weight: 650; text-align: left; }
+      .guide.compact h1 { font-size: 17px; }
+      .guide p { margin: 6px 0 0; text-align: left; }
+      .guide .state { color: var(--accent); min-height: 0; }
+      /* A corner accepted: green, the same green as its marker on the table. */
+      .guide .state.ok { color: #34e07a; font-weight: 600; }
+      .guide .state:empty, .guide .foot:empty { display: none; }
+      .guide .foot { font-size: 12px; }
+      .guide-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin-top: 14px; }
+      .guide-actions .primary { min-width: 9em; }
+      /* Landscape with little height: the drawing beside the words, so nothing shrinks to illegible. */
+      @media (orientation: landscape) and (max-height: 560px) {
+        .guide .body { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); align-items: center; }
+        .window.guide.compact { max-height: 60%; }
+        .guide.compact .art svg { max-width: 170px; }
+      }
+      .guide-toast { position: absolute; left: 50%; bottom: var(--gap); transform: translateX(-50%); z-index: 5; margin: 0; padding: 10px 16px; width: max-content; max-width: calc(100% - 2 * var(--gap)); text-align: center; }
+      /* The camera mode (src/cameraView.ts): the camera's picture behind the transparent scene, a layer over it for the corner taps, and numbered handles to drag. */
+      #scene video.camera-feed { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
+      body.camera #scene canvas.view { z-index: 1; }
+      .camera-layer { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+      .camera-layer.collecting { pointer-events: auto; cursor: crosshair; }
+      /* The build's version (vite.config.ts), small in a corner, so a tester knows which one they see. */
+      body[data-version]::after { content: "v " attr(data-version); position: fixed; right: max(4px, env(safe-area-inset-right)); bottom: max(1px, env(safe-area-inset-bottom)); z-index: 20; font-size: 9px; color: var(--muted); opacity: 0.7; pointer-events: none; }
+      /* While the guide shows, the status line would repeat it. */
+      body.guiding #status { visibility: hidden; }
+      .guide .phone { animation: sway 2.6s ease-in-out infinite; transform-origin: 120px 64px; }
+      .guide .ring { animation: ring 2.6s ease-in-out infinite; }
+      .guide .pulse { animation: pulse 1.6s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+      @keyframes sway { 0%, 100% { transform: translateX(-26px) rotate(-6deg); } 50% { transform: translateX(26px) rotate(6deg); } }
+      @keyframes ring { 0%, 55% { opacity: 0; } 70%, 100% { opacity: 1; } }
+      @keyframes pulse { 0% { transform: scale(0.6); opacity: 1; } 100% { transform: scale(1.6); opacity: 0; } }
+      @media (prefers-reduced-motion: reduce) {
+        .guide .phone, .guide .ring, .guide .pulse { animation: none; }
+        .guide .ring { opacity: 1; }
+      }
+      input[type="file"] { position: absolute; opacity: 0; width: 1px; height: 1px; }
+      [hidden] { display: none !important; }
+      .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+      /* The floating windows: over the scene, inside it, never part of the page's flow. Their
+         size comes from the scene's area, not from their text: what doesn't fit scrolls inside. */
+      .window {
+        position: absolute; top: var(--gap); left: var(--gap); z-index: 2; display: flex; flex-direction: column;
+        width: min(340px, calc(100% - 2 * var(--gap))); max-height: calc(100% - 2 * var(--gap)); min-height: 0;
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+      }
+      /* The panels let the city show through their background only: text and controls stay fully opaque. */
+      .window.surface { background: rgba(21, 28, 38, 0.85); border-color: rgba(160, 173, 191, 0.3); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+      @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+        .window.surface { background: rgba(21, 28, 38, 0.94); }
+      }
+      /* In AR the camera can be bright: the panels are a little denser there. */
+      body.ar .window.surface { background: rgba(21, 28, 38, 0.9); }
+      /* Views and Research open on the left, under their buttons; Agents on the right, under its own. */
+      .window.side-right { left: auto; right: var(--gap); }
+      /* The panels end above the people's key when it shows, so that they never cover it. */
+      .window { max-height: calc(100% - 2 * var(--gap) - var(--key-room, 0px)); }
+
+      /* The people's key: over the scene, right above the main bar, its right end on the Agents
+         button's. Icons and words only: no background, no frame, nothing to press. */
+      #people-key {
+        position: absolute; z-index: 1; right: 7px; bottom: 6px; max-width: calc(100% - 14px);
+        display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 6px 16px;
+        font-size: 13px; line-height: 18px; color: #e8edf5; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+        pointer-events: none; user-select: none;
+      }
+      /* The busy places' counts: the "At a place" icon and a number over each, words only, moving with the view. */
+      .place-labels { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 1; }
+      /* A busy place's pin: small, thin and faint, only to find the halo's centre; brighter when selected. Taps reach it through the scene (44 px around it). */
+      .place-pin { position: absolute; left: 0; top: 0; width: 16px; height: 16px; opacity: 0.8; pointer-events: none; filter: drop-shadow(0 0 3px rgba(94, 211, 243, 0.45)); }
+      .place-pin.selected { opacity: 1; }
+      .place-pin svg { display: block; width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+      /* The selected place's words: "148 people", plain text beside the pin. */
+      .place-words { position: absolute; left: 0; top: 0; z-index: 1; pointer-events: none; font-size: 15px; font-weight: 500; color: #e8edf5; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75); white-space: nowrap; font-variant-numeric: tabular-nums; }
+      #people-key .label { color: #a0adbf; letter-spacing: 0.08em; text-transform: uppercase; font-size: 12px; }
+      #people-key .item { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+      #people-key .item > span { color: #e8edf5; }
+      #people-key svg { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.5)); }
+      /* Narrow: two compact rows, still anchored right. */
+      @container scene (max-width: 520px) {
+        #people-key { display: grid; grid-template-columns: auto auto; justify-content: end; justify-items: start; column-gap: 16px; }
+        #people-key .label { grid-column: 1 / -1; justify-self: end; }
+      }
+      .window.large { width: min(600px, calc(100% - 2 * var(--gap))); height: min(700px, calc(100% - 2 * var(--gap) - var(--key-room, 0px))); max-height: none; container: guide / size; }
+      /* With the voting demo on the table, its window gives the table room: on a wide scene it
+         steps aside, narrower, at full height; on an upright one it takes only the height it
+         needs, up to about two thirds of the scene. */
+      #scene { container: scene / size; }
+      .window.large.compact { width: min(360px, calc(100% - 2 * var(--gap))); height: auto; max-height: calc(100% - 2 * var(--gap)); container-type: inline-size; }
+      @container scene (max-aspect-ratio: 1 / 1) {
+        .window.large.compact { width: calc(100% - 2 * var(--gap)); max-height: 64%; }
+      }
+      .window.card { width: min(520px, calc(100% - 2 * var(--gap))); }
+      /* A window's header: its text, a flexible block starting at the content's left margin
+         (the body's 16px), and its actions together at the top right: Back, then Close. */
+      .window > header { flex: none; display: flex; align-items: flex-start; gap: 12px; padding: 6px 6px 6px 16px; border-bottom: 1px solid var(--line); }
+      .window > header > :first-child { flex: 1 1 auto; min-width: 0; text-align: left; }
+      .window > header > h2 { align-self: center; }
+      .window > header > .actions { flex: none; display: flex; align-items: center; gap: 8px; }
+      .window > header > .actions > button { height: 36px; min-height: 36px; margin: 0; }
+      .actions > .back { display: inline-flex; align-items: center; gap: 4px; }
+      .actions > .back .chevron { font-size: 18px; line-height: 1; }
+      /* In a narrow window the actions keep the top right, and the text takes the next row, on the left. */
+      @container guide (max-width: 420px) {
+        .window > header { flex-wrap: wrap; row-gap: 2px; }
+        .window > header > .actions { order: -1; flex-basis: 100%; justify-content: flex-end; }
+      }
+      .window h2 { margin: 0; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+      .window h3 { margin: 14px 0 6px; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+      .window h3:first-child { margin-top: 0; }
+      .window .body {
+        flex: 1 1 auto; min-height: 0; min-width: 0; padding: 14px 16px; overflow-y: auto; overscroll-behavior: contain;
+        scrollbar-width: thin; scrollbar-color: var(--line) transparent;
+      }
+      .window .body::-webkit-scrollbar { width: 6px; }
+      .window .body::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+      .window p { margin: 6px 0 0; color: var(--muted); }
+      .note { font-size: 12px; color: var(--muted); }
+      /* A list of switches: checkbox (or radio), the name with what it shows under it, and the
+         layer's colour in a column on the right; a hairline between rows, none around the group. */
+      .toggles { display: grid; gap: 0; }
+      .toggles label {
+        display: grid; grid-template-columns: 18px minmax(0, 1fr) 8px; align-items: start; column-gap: 12px;
+        min-height: 52px; padding: 15px 2px; cursor: pointer;
+      }
+      .toggles label + label { border-top: 1px solid rgba(160, 173, 191, 0.18); }
+      .toggles label[hidden] + label { border-top: 0; }
+      .toggles label:hover .what { color: #fff; }
+      .toggles input { width: 18px; height: 18px; margin: 1px 0 0; accent-color: var(--accent); }
+      .toggles .what { display: grid; font-size: 15px; line-height: 20px; font-weight: 400; color: var(--text); }
+      .toggles .what small { font-size: 12px; line-height: 1.4; color: var(--muted); }
+      /* The dot sits on the name's line, whatever the lines under it. */
+      .toggles .swatch { width: 8px; height: 8px; margin-top: 6px; border-radius: 50%; }
+      .window .toggles + h3, .window .credit + h3 { margin-top: 22px; }
+      /* A data source's credit under the layers it feeds, as Realistic names its imagery. */
+      .window .credit { margin: -8px 0 0 32px; }
+      .row { display: flex; flex-wrap: wrap; gap: 6px; }
+      .row button, .row label.button { min-height: 44px; padding: 6px 12px; }
+      .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+      .segments { display: grid; gap: 6px; }
+      .segments label { display: grid; grid-template-columns: 12px 5.5em minmax(0, 1fr); align-items: center; gap: 8px; }
+      .segments .swatch { width: 12px; height: 12px; border-radius: 3px; }
+      .segments select { min-height: 44px; min-width: 0; padding: 0 8px; font: inherit; color: var(--text); border: 1px solid var(--line); border-radius: 8px; background: rgba(8, 11, 17, 0.6); }
+      #time-now { font: 600 34px/1 ui-monospace, monospace; color: var(--accent); }
+      #time-seek { width: 100%; margin: 12px 0 4px; accent-color: var(--accent); }
+      .bars { display: grid; gap: 8px; }
+      .bar { display: grid; grid-template-columns: 7.5em 1fr 4.5em; align-items: center; gap: 8px; font-size: 13px; }
+      .bar .track { height: 10px; border-radius: 5px; background: rgba(120, 150, 200, 0.16); overflow: hidden; }
+      .bar .fill { display: block; height: 100%; border-radius: 5px; }
+      .bar .value { text-align: right; font-variant-numeric: tabular-nums; }
+      /* Numbers with their meaning: the dataset, the agents loaded, those on the table now. */
+      .counts { display: grid; grid-template-columns: repeat(auto-fit, minmax(9.5em, 1fr)); gap: 6px; margin: 0 0 6px; }
+      .counts div { padding: 8px 10px; border-radius: 10px; background: var(--strip); }
+      .counts dt { font-size: 12px; color: var(--muted); }
+      .counts dd { margin: 0; font-size: 18px; font-weight: 650; font-variant-numeric: tabular-nums; }
+      /* The Agents panel's key: an icon in each mode's colour and its name, in two columns where they fit. */
+      .key { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px 10px; margin: 6px 0 4px; padding: 0; list-style: none; }
+      .key li { display: flex; align-items: center; gap: 8px; min-height: 32px; font-size: 14px; }
+      .key svg { width: 22px; height: 22px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+      .key .dim svg { filter: drop-shadow(0 0 1px #a0adbf); }
+
+      /* Research: four entries of the same shape, title, subtitle and credits. */
+      .entries { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+      .entry {
+        width: 100%; display: grid; grid-template-columns: minmax(0, 1fr); justify-content: stretch; justify-items: start; gap: 2px; padding: 12px 14px; text-align: left;
+        border-radius: 12px; background: var(--surface);
+      }
+      .entry:hover { border-color: var(--accent); }
+      .entry .head { width: 100%; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; column-gap: 12px; }
+      .entry .title { flex: 1 1 auto; font-size: 16px; font-weight: 650; }
+      /* "Active": a quiet check and word in pastel cyan, information only. On a narrow entry it takes its own line, on the right. */
+      .entry .active { flex: none; margin-left: auto; display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 500; color: #9adff0; }
+      .entry .active svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+      .entry .subtitle { font-size: 14px; color: var(--text); opacity: 0.85; }
+      .entry .credits { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+      .entry .subtitle:empty { display: none; }
+      /* A research window's full credits, at the top of its page, where they scroll with it. */
+      .window .credits-line { margin: 0 0 12px !important; font-size: 13px; line-height: 1.5; color: var(--muted); overflow-wrap: normal; }
+
+      /* The research windows: a header with the entry's three lines, its pages, and the page. */
+      .guide-title { min-width: 0; display: grid; gap: 1px; padding: 4px 0; }
+      .guide-name { margin: 0 !important; font-size: 16px; font-weight: 650; color: var(--text) !important; }
+      .guide-sub { margin: 0 !important; font-size: 13px; color: var(--text) !important; opacity: 0.85; }
+      .guide-by { margin: 0 !important; font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+      .guide-pages { flex: none; display: flex; gap: 4px; padding: 6px 10px; border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
+      .guide-pages button { flex: none; min-height: 40px; padding: 4px 12px; font-size: 13px; background: transparent; border-color: transparent; color: var(--muted); }
+      .guide-pages button[aria-current="page"] { color: var(--text); border-color: var(--line); background: var(--surface); }
+      .lead { display: grid; gap: 8px; justify-items: start; }
+      .lead > button.big { min-height: 48px; padding: 10px 18px; font-weight: 650; }
+      .state-line { font-size: 13px; color: var(--muted); }
+      .state-line b { color: var(--text); font-weight: 600; }
+      .how-link { margin-top: 16px; background: transparent; }
+      .tag { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; color: var(--amber); border: 1px solid rgba(235, 186, 114, 0.5); }
+      .guide-label { margin: 0; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
+      .guide h1 { margin: 6px 0 4px; font-size: clamp(22px, 4cqi, 28px); line-height: 1.15; font-weight: 650; }
+      .guide .lede { margin: 0 0 14px; color: var(--muted); font-size: 15px; }
+      .guide .body > p, .guide .body li { font-size: 14px; }
+      .guide ul.plain { margin: 6px 0 0; padding-left: 18px; color: var(--muted); }
+      .flow { display: grid; gap: 0; }
+      .source { justify-self: center; display: grid; justify-items: center; padding: 8px 18px; border: 1px solid var(--line); border-radius: 12px; background: rgba(13, 16, 21, 0.6); }
+      .source b { font-size: 24px; line-height: 1; }
+      .source span { font-size: 14px; color: var(--muted); }
+      .connectors { display: block; width: 100%; height: 34px; }
+      .connectors path { fill: none; stroke-width: 2; vector-effect: non-scaling-stroke; }
+      .routes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+      .route {
+        display: grid; align-content: start; justify-items: start; gap: 2px; min-height: 44px; padding: 10px 10px 12px; text-align: left;
+        border: 1px solid var(--line); border-top-width: 3px; border-radius: 12px; background: rgba(13, 16, 21, 0.55);
+      }
+      .route .share { font-size: clamp(20px, 3.4cqi, 24px); font-weight: 650; line-height: 1.1; }
+      .route .name { font-size: 15px; font-weight: 600; }
+      .route .detail { font-size: 14px; color: var(--muted); }
+      .route[data-tone="cyan"] { border-top-color: var(--accent); }
+      .route[data-tone="violet"] { border-top-color: var(--violet); }
+      .route[data-tone="amber"] { border-top-color: var(--amber); }
+      .route[aria-pressed="true"] { color: var(--text); background: rgba(83, 212, 245, 0.1); border-color: var(--accent); }
+      .explanation { min-height: 1.45em; margin: 10px 0 0; color: var(--text) !important; font-size: 14px; }
+      .results h3 { display: flex; justify-content: space-between; gap: 8px; margin-top: 16px; }
+      .results .kept { text-transform: none; letter-spacing: 0; color: var(--accent); }
+      .result { display: grid; grid-template-columns: 5.6em minmax(0, 1fr) 3.4em; align-items: center; gap: 8px; margin-top: 10px; }
+      .result .plan { font-weight: 600; }
+      .result .total { text-align: right; font-size: clamp(20px, 3.4cqi, 24px); font-weight: 650; font-variant-numeric: tabular-nums; }
+      .result .track { display: flex; height: 16px; border-radius: 8px; background: rgba(160, 173, 191, 0.14); overflow: hidden; }
+      .result .part { display: block; height: 100%; }
+      .result .how { grid-column: 2 / span 2; font-size: 12px; color: var(--muted); }
+      .tone-cyan { background: var(--accent); }
+      .tone-violet { background: var(--violet); }
+      .tone-amber { background: var(--amber); }
+      .dimmed { opacity: 0.25; }
+      .closing { margin: 14px 0 0; font-size: 15px; }
+      .research-view h1 { font-size: clamp(20px, 3.8cqi, 26px); }
+      .research-view .by { margin: 0; color: var(--muted); }
+      .research-view cite { display: block; margin: 8px 0 12px; font-style: normal; font-size: 15px; }
+      .research-view details { border-top: 1px solid var(--line); padding: 4px 0; }
+      .research-view summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 600; }
+      .research-view details p, .research-view details li { margin: 0 0 10px; color: var(--text); font-size: 14px; }
+      .sources { display: grid; gap: 6px; margin-top: 12px; }
+      .sources a { color: var(--accent); min-height: 44px; display: inline-flex; align-items: center; }
+      .annotation { display: grid; font-size: 12px; color: var(--muted); }
+      .missing { padding: 12px 14px; border: 1px dashed var(--line); border-radius: 12px; color: var(--muted); }
+      /* Routes side by side only while their words still fit: otherwise one under another. */
+      @container guide (max-width: 420px) {
+        .routes { grid-template-columns: minmax(0, 1fr); }
+        .connectors { display: none; }
+        .flow { gap: 8px; }
+        .route { grid-template-columns: auto minmax(0, 1fr); column-gap: 10px; align-items: baseline; border-top-width: 1px; border-left-width: 4px; }
+        .route[data-tone="cyan"] { border-left-color: var(--accent); }
+        .route[data-tone="violet"] { border-left-color: var(--violet); }
+        .route[data-tone="amber"] { border-left-color: var(--amber); }
+        .route .share { grid-row: span 2; }
+      }
+      /* On a wide, short window the diagram and the results sit side by side. */
+      @container guide (min-width: 500px) and (max-height: 520px) {
+        .overview-body { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+        .overview-body > :not(.flow, .results) { grid-column: 1 / -1; }
+        .results h3:first-child { margin-top: 0; }
+      }
+
+      .window > footer { flex: none; display: flex; flex-wrap: nowrap; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 6px 6px 14px; border-top: 1px solid var(--line); }
+      .window > footer .primary { flex: none; white-space: nowrap; padding: 8px 12px; }
+
+      /* CityScope Volpe: four stages in a loop, two rows when the window is wide, one column when it is narrow. */
+      .volpe h1 { margin: 4px 0 0; }
+      .stage-cycle {
+        display: grid; margin: 12px 0 0; grid-template-columns: minmax(0, 1fr) 30px minmax(0, 1fr); grid-template-rows: auto 30px auto;
+        grid-template-areas: "model right changes" "up . down" "feedback left simulation";
+      }
+      .stage {
+        display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 10px; align-content: start; justify-items: start; min-width: 0; min-height: 44px;
+        padding: 12px; text-align: left; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--text);
+      }
+      .stage svg { grid-row: span 3; width: 20px; height: 20px; margin-top: 2px; fill: none; stroke: var(--accent); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+      .stage .number { font-size: 12px; letter-spacing: 0.08em; color: var(--accent); }
+      .stage .name { font-size: 15px; font-weight: 650; }
+      .stage .detail { font-size: 13px; color: var(--muted); }
+      .stage[aria-pressed="true"] { color: var(--text); background: #26344a; border-color: var(--accent); }
+      .stage-cycle .arrow { display: grid; place-items: center; color: var(--muted); font-size: 12px; }
+      .stage-cycle .arrow svg { width: 22px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+      .stage-cycle .arrow.down svg { transform: rotate(90deg); }
+      .stage-cycle .arrow.left svg { transform: rotate(180deg); }
+      .stage-cycle .arrow.up svg { transform: rotate(-90deg); }
+      .stage-cycle .arrow .back { display: none; }
+      .loop-note { margin: 10px 0 0 !important; text-align: center; color: var(--text) !important; font-size: 14px; }
+      .stage-detail { margin-top: 14px; padding: 12px 14px; border-radius: 12px; background: var(--strip); }
+      .stage-detail h3 { margin: 0 0 4px; color: var(--text); letter-spacing: 0; text-transform: none; font-size: 15px; }
+      .stage-detail p { margin: 0 !important; color: var(--text) !important; font-size: 14px; }
+      .indicators { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+      .indicators li { padding: 4px 10px; border-radius: 999px; background: var(--strip); border: 1px solid var(--line); font-size: 13px; }
+      .pub-facts { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 8px 0 0; padding: 0; list-style: none; font-size: 14px; }
+      .volpe .guide-by { overflow-wrap: normal; }
+      @container guide (max-width: 460px) {
+        .stage-cycle { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-template-areas: "model" "right" "changes" "down" "simulation" "left" "feedback" "up"; }
+        .stage-cycle .arrow { height: 26px; }
+        .stage-cycle .arrow svg { transform: rotate(90deg) !important; }
+        .stage-cycle .arrow.up { display: flex; gap: 6px; height: auto; padding-top: 6px; }
+        .stage-cycle .arrow.up svg { transform: scaleX(-1) rotate(90deg) !important; }
+        .stage-cycle .arrow.up .back { display: inline; }
+      }
+
+      /* On a scene too short for a large window's header, body and footer together (a small phone
+         with the conversation open), the whole window scrolls as one, its footer staying at the
+         bottom: everything stays reachable, and nothing is cut or shortened. */
+      @container scene (max-height: 250px) {
+        .window.large { overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+        .window.large > .body { flex: none; overflow: visible; }
+        .window.large > footer { position: sticky; bottom: 0; z-index: 1; background: var(--panel-solid); border-radius: 0 0 var(--radius) var(--radius); }
+      }
+
+      /* A short flow of steps: side by side, or one under another when they don't fit. */
+      .steps { display: grid; grid-template-columns: minmax(0, 1fr) 24px minmax(0, 1fr) 24px minmax(0, 1fr); align-items: stretch; margin: 0; padding: 0; list-style: none; }
+      .step {
+        display: grid; grid-template-rows: auto auto 1fr; justify-items: center; align-content: start; gap: 2px; min-width: 0; min-height: 44px; padding: 10px 8px 12px;
+        text-align: center; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--text);
+      }
+      .step svg { width: 100%; max-width: 96px; height: 48px; margin-bottom: 4px; }
+      .step .name { font-size: 15px; font-weight: 600; }
+      .step .detail { font-size: 14px; color: var(--muted); }
+      .step[aria-pressed="true"] { background: rgba(83, 212, 245, 0.1); border-color: var(--accent); color: var(--text); }
+      .steps.picking .step[aria-pressed="false"] { opacity: 0.45; }
+      .link { align-self: center; justify-self: center; width: 24px; height: 16px; }
+      .link path { fill: none; stroke: var(--muted); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+      @container guide (max-width: 420px) {
+        .steps { grid-template-columns: minmax(0, 1fr); }
+        .step { grid-template-columns: 76px minmax(0, 1fr); grid-template-rows: auto auto; justify-items: start; align-items: center; column-gap: 12px; text-align: left; }
+        .step svg { grid-row: span 2; height: 40px; margin: 0; }
+        .step .name { align-self: end; }
+        .step .detail { align-self: start; }
+        .link { transform: rotate(90deg); height: 24px; }
+      }
+
+      /* Where's my Jarvis?: a question, and the three steps from it to a spatial answer. */
+      .jarvis .ask { justify-self: start; display: grid; gap: 2px; max-width: 100%; margin: 0 0 14px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 14px 14px 14px 4px; background: var(--surface); }
+      .jarvis .ask figcaption { font-size: 12px; color: var(--muted); }
+      .jarvis .ask q { font-size: 16px; color: var(--text); }
+      .jarvis .wave rect { fill: var(--accent); }
+      .jarvis .records .hit rect { fill: var(--accent); }
+      .jarvis .records .miss rect { fill: none; stroke: #4a576b; stroke-width: 1.5; }
+      .jarvis .space path { stroke-linejoin: round; }
+      .jarvis .space .ground { fill: none; stroke: #4a576b; stroke-width: 1.2; }
+      .jarvis .space .block { fill: none; stroke: var(--muted); stroke-width: 1.2; }
+      .jarvis .space .lit { fill: var(--accent); stroke: var(--accent); stroke-width: 1; }
+      .jarvis .space .side { fill-opacity: 0.45; }
+      .jarvis .space .top { fill-opacity: 0.9; }
+      .try { display: grid; gap: 6px; margin: 8px 0 0; padding: 0; list-style: none; }
+      .try button { width: 100%; justify-content: space-between; text-align: left; background: var(--surface); }
+      .try button span:last-child { font-size: 12px; color: var(--muted); }
+
+      /* H-ABM: the decision cycle, with its optional modules. */
+      .cycle { display: grid; grid-template-columns: minmax(0, 1fr) 24px minmax(0, 1fr) 24px minmax(0, 1fr); align-items: stretch; margin: 12px 0 0; padding: 0; list-style: none; }
+      .cycle .node { display: grid; align-content: start; gap: 2px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+      .cycle .node b { font-size: 15px; }
+      .cycle .node span { font-size: 14px; color: var(--muted); }
+      .cycle .node.cognition { border-color: var(--accent); }
+      .loop { display: grid; grid-template-columns: 1fr; margin: 4px 0 0; }
+      .loop svg { width: 100%; height: 26px; }
+      .loop path { fill: none; stroke: var(--muted); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+      .loop p { margin: 0 !important; text-align: center; font-size: 12px; }
+      .modules { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 10px 0 0; }
+      .modules span { padding: 6px 12px; border: 1px dashed var(--line); border-radius: 999px; font-size: 13px; color: var(--muted); }
+      .scope { margin-top: 14px !important; padding: 10px 12px; border-left: 3px solid var(--amber); background: var(--strip); color: var(--text) !important; font-size: 14px; }
+      @container guide (max-width: 420px) {
+        .cycle { grid-template-columns: minmax(0, 1fr); }
+        .cycle .link { transform: rotate(90deg); height: 24px; }
+      }
+
+      /* The agent's card: their figure and what they are doing now, then their profile and day. */
+      .card-top { display: grid; grid-template-columns: minmax(120px, 0.8fr) minmax(0, 1.2fr); gap: 14px; align-items: start; }
+      @container guide (max-width: 420px) { .card-top { grid-template-columns: minmax(0, 1fr); } }
+      /* The figure keeps its proportions: the frame is three by four, as tall as the window allows. */
+      .portrait { position: relative; margin: 0; aspect-ratio: 3 / 4; height: min(260px, 48cqh); width: auto; max-width: 100%; justify-self: center; border-radius: 12px; background: radial-gradient(ellipse at 50% 85%, rgba(83, 212, 245, 0.1), transparent 65%), #10161f; overflow: hidden; }
+      .portrait canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+      .portrait .fallback { position: absolute; inset: 0; display: grid; place-items: center; align-content: center; gap: 6px; padding: 10px; text-align: center; font-size: 12px; color: var(--muted); }
+      .portrait .fallback svg { width: 46%; height: auto; }
+      .now h3 { margin-top: 0; }
+      .doing { margin: 0 !important; font-size: 18px; font-weight: 650; color: var(--text) !important; line-height: 1.25; }
+      .progress { height: 8px; margin: 10px 0 2px; border-radius: 4px; background: rgba(160, 173, 191, 0.16); overflow: hidden; }
+      .progress span { display: block; height: 100%; background: var(--accent); }
+      .facts { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 10px; margin: 10px 0 0; font-size: 14px; }
+      .facts dt { color: var(--muted); }
+      .facts dd { margin: 0; }
+      .trail { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 12px 0 0; padding: 8px 12px; border-radius: 10px; background: var(--strip); font-size: 13px; color: var(--muted); }
+      .trail b { color: var(--text); }
+      .trail .by { color: var(--accent); }
+      .card details { margin-top: 10px; border-top: 1px solid var(--line); }
+      .card summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 600; }
+      .strips { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+      .strips li { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 40px; padding: 6px 10px; border-radius: 10px; background: var(--strip); }
+      .strips svg { width: 20px; height: 20px; fill: none; stroke: var(--accent); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+      .strips .label { font-size: 13px; color: var(--muted); }
+      .strips .value { font-size: 14px; text-align: right; overflow-wrap: anywhere; }
+      .strips li.absent svg { stroke: var(--muted); }
+      .strips li.absent .value { color: var(--muted); font-style: italic; }
+      .day { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+      .day li { display: grid; grid-template-columns: 5.4em 4.6em minmax(0, 1fr); gap: 8px; align-items: start; padding: 6px 8px; border-left: 3px solid transparent; border-radius: 6px; font-size: 14px; }
+      .day li.now { border-left-color: var(--accent); background: rgba(83, 212, 245, 0.08); }
+      .day li.past { color: var(--muted); }
+      .day .when { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+      .day li.now .when { color: var(--accent); font-weight: 650; }
+      .day .time { font-variant-numeric: tabular-nums; }
+      .day button { width: 100%; min-height: 40px; padding: 4px 8px; justify-content: space-between; text-align: left; background: transparent; color: inherit; }
+      .day button[aria-expanded="true"] { border-color: var(--accent); }
+      .trip-detail { grid-column: 1 / -1; margin: 4px 0 2px; }
+      @container guide (max-width: 420px) {
+        .day li { grid-template-columns: 4.8em minmax(0, 1fr); }
+        .day .when { grid-column: 1 / -1; }
+      }
+
+      /* In AR the camera fills the screen behind everything: the page keeps its layout and
+         only loses its own backgrounds, so that every panel floats over the camera. */
+      body.ar, body.ar #app { background: transparent; }
+      body.ar #scene canvas.view { visibility: hidden; }
+
+      @media (prefers-reduced-motion: no-preference) {
+        .window:not([hidden]) { animation: appear 140ms ease-out; }
+        button, .part { transition: background-color 120ms, color 120ms, border-color 120ms, opacity 160ms; }
+        .bar .fill, .progress span { transition: width 300ms; }
+        @keyframes appear { from { opacity: 0; transform: translateY(-4px); } }
+      }
+    </style>
+    <script type="module" crossorigin src="./assets/index-C3HRDDkM.js"></script>
+  </head>
+  <body data-version="22:59 · dd28131">
+    <div id="app">
+      <header id="top" class="surface">
+        <div class="brand">
+          <span class="name">CityScope Volpe</span>
+          <div class="modes" role="group" aria-label="View">
+            <button id="mode-vr" class="mode" aria-pressed="true" title="VR: the 3D view, free to turn and zoom">VR</button>
+            <button id="guide-open" class="mode" aria-pressed="false" title="AR: place the city on the table">AR</button>
+            <button id="realign" class="mode" hidden title="Place the city on the table again">Re-align</button>
+          </div>
+          <span id="context" class="visually-hidden" aria-live="polite"></span>
+        </div>
+        <span id="hub-state" role="status" hidden></span>
+        <div id="simulation" hidden>
+          <button id="clock" class="quiet" aria-haspopup="dialog" aria-controls="window-time" aria-expanded="false" aria-label="Simulation time"></button>
+          <button id="playback" class="quiet"></button>
+        </div>
+      </header>
+
+      <main id="scene">
+        <div id="people-key" role="note" aria-label="Colours of the people: how each is travelling now" hidden></div>
+        <!-- The guided welcome (src/guide.ts): over the scene, never resizing it. -->
+        <section id="guide" class="window surface guide" role="dialog" aria-labelledby="guide-title" hidden>
+          <header>
+            <p id="guide-step" class="guide-count">Step 1 of 5</p>
+            <div class="actions"><button id="guide-close" class="quiet">Close</button></div>
+          </header>
+          <div class="body">
+            <div id="guide-art" class="art"></div>
+            <div class="words">
+              <h1 id="guide-title"></h1>
+              <p id="guide-text"></p>
+              <p id="guide-state" class="state" role="status" aria-live="polite"></p>
+              <div class="guide-actions">
+                <button id="guide-back" class="quiet">Back</button>
+                <button id="guide-restart" class="quiet" hidden>Start again</button>
+                <button id="guide-secondary" class="quiet" hidden></button>
+                <button id="guide-primary" class="primary"></button>
+              </div>
+              <p id="guide-foot" class="foot"></p>
+            </div>
+          </div>
+        </section>
+        <p id="guide-toast" class="surface guide-toast" role="status" hidden></p>
+        <button id="whole-table" class="surface whole-table" hidden>Whole table</button>
+        <section id="window-views" class="window surface" role="dialog" aria-labelledby="title-views" hidden>
+          <header><h2 id="title-views">Views</h2><button class="quiet close" aria-label="Close Views">Close</button></header>
+          <div class="body">
+            <h3>Visible layers</h3>
+            <div id="layers-views" class="toggles"></div>
+            <h3>Rendering</h3>
+            <div class="toggles" role="radiogroup" aria-label="Rendering">
+              <label><input type="radio" name="rendering" value="holographic" checked /><span class="what">Holographic</span></label>
+              <label><input type="radio" name="rendering" value="realistic" disabled /><span class="what">Realistic<small id="realistic-note">Needs the orthophoto on this device</small></span></label>
+            </div>
+
+            <h3>Activity layers</h3>
+            <div id="layers-activity" class="toggles"></div>
+            <p class="note credit population-credit">Data: synthetic population, Marcel Bartumeu Raméntol</p>
+            <h3>Appearance</h3>
+            <div id="layers-appearance" class="toggles"></div>
+            <h3>Alignment target</h3>
+            <div class="row">
+              <label class="button">Load 3D scan<input id="file" type="file" accept=".glb,.gltf,.obj,.fbx" /></label>
+              <button id="unit" hidden></button>
+              <button id="up" hidden></button>
+              <button id="ghost" hidden>Hide scan</button>
+              <button id="forget" hidden>Use Volpe table size</button>
+            </div>
+            <p id="target" class="note"></p>
+            <h3>Table state</h3>
+            <p id="hub-detail" class="note">No state hub: the segments are chosen in Pre-form.</p>
+          </div>
+        </section>
+
+        <section id="window-agents" class="window surface side-right" role="dialog" aria-labelledby="title-agents" hidden>
+          <header><h2 id="title-agents">Agents</h2><button class="quiet close" aria-label="Close Agents">Close</button></header>
+          <div class="body">
+            <div id="agents-layer" class="toggles"></div>
+            <p class="note credit population-credit">Data: synthetic population, Marcel Bartumeu Raméntol</p>
+            <div id="agents-key">
+              <h3>Mode of travel</h3>
+              <p class="note">Each person's colour is how they are travelling now, on this leg of their day.</p>
+              <ul id="modes-people" class="key"></ul>
+              <h3>Near the table</h3>
+              <p class="note">Close up, people on foot become figures, riders get a bicycle or a scooter, drivers a car; people on transit ride these.</p>
+              <ul id="modes-transport" class="key"></ul>
+              <p class="note">* Illustrative times. Red Line and buses: MBTA weekday schedule (GTFS). Map data © OpenStreetMap contributors.</p>
+              <h3>Numbers</h3>
+              <dl id="agents-counts" class="counts"></dl>
+            </div>
+            <div class="row" style="margin-top: 8px"><button class="pick-agent">Select an agent</button></div>
+          </div>
+        </section>
+
+        <section id="window-research" class="window surface" role="dialog" aria-labelledby="title-research" hidden>
+          <header><h2 id="title-research">Research</h2><button class="quiet close" aria-label="Close Research">Close</button></header>
+          <div class="body">
+            <ul id="research-entries" class="entries"></ul>
+          </div>
+        </section>
+
+        <section id="window-time" class="window surface" role="dialog" aria-labelledby="title-time" hidden>
+          <header><h2 id="title-time">Simulation time</h2><button class="quiet close" aria-label="Close Simulation time">Close</button></header>
+          <div class="body">
+            <div class="solar-month">
+              <span id="solar-month-label">Solar month</span>
+              <button id="solar-month" class="picker" type="button" aria-label="Solar month" aria-labelledby="solar-month-label solar-month"></button>
+            </div>
+            <hr class="divider" />
+            <div id="time-now"></div>
+            <input id="time-seek" type="range" min="0" max="1439" step="5" aria-label="Time of day" />
+            <h3>Presets</h3>
+            <div class="row"><button data-preset="day">Day · 12:00</button><button data-preset="night">Night · 22:00</button></div>
+            <h3>Playback speed</h3>
+            <div id="time-speeds" class="row"></div>
+            <p class="note">Solar month changes lighting only.<br />Population uses the same weekday dataset.</p>
+          </div>
+        </section>
+
+        <!-- CityScope Volpe: the published platform the project stands on -->
+        <section id="window-volpe" class="window large surface guide volpe" role="dialog" hidden>
+          <div class="body volpe-view" data-view="architecture">
+            <h1>Functional architecture</h1>
+            <p class="lede">Four stages in a loop: the model, the changes people make to it, the simulation and its feedback.</p>
+            <div id="volpe-cycle" class="stage-cycle" role="group" aria-label="Functional architecture: four stages in a loop"></div>
+            <p class="loop-note">Discuss together. Revise the scenario.</p>
+            <div class="stage-detail" aria-live="polite">
+              <h3 id="volpe-detail-title"></h3>
+              <p id="volpe-detail-text"></p>
+            </div>
+            <h3>Indicators</h3>
+            <ul id="volpe-indicators" class="indicators" aria-label="Indicator categories described by the publication"></ul>
+            <p class="note">Simplified interpretation of the published platform.</p>
+            <button class="how-link" data-goto="research">Read the research</button>
+          </div>
+          <div class="body volpe-view research-view" data-view="research" hidden>
+            <h1>Behind CityScope Volpe</h1>
+            <cite>CityScope: A Data-Driven Interactive Simulation Tool for Urban Design. Use Case Volpe</cite>
+            <p class="by">Luis Alonso · Yan Ryan Zhang · Arnaud Grignard · Ariel Noyman · Yasushi Sakai · Markus ElKatsha · Ronan Doorley · Kent Larson</p>
+            <ul class="pub-facts">
+              <li>ICCS 2018</li>
+              <li>Pages 253–261</li>
+              <li>DOI: 10.1007/978-3-319-96661-8_27</li>
+              <li>City Science · MIT Media Lab</li>
+            </ul>
+            <p class="note">The MIT project page lists this chapter more than once, with different dates or wording. It is one publication, identified by its DOI.</p>
+            <details>
+              <summary>Project contributors</summary>
+              <p>Besides the publication's authors, the MIT project page also acknowledges:</p>
+              <ul class="plain">
+                <li>Dalma Foldesi</li>
+                <li>Jung In Seo</li>
+              </ul>
+              <p class="note">Markus F. ElKatsha, also listed on that page, is the publication's author Markus ElKatsha.</p>
+            </details>
+            <details>
+              <summary>About this diagram</summary>
+              <p>“This diagram is an explanatory synthesis of the published platform: physical model, tangible interaction, computation and feedback.”</p>
+            </details>
+            <div class="sources">
+              <a href="https://link.springer.com/chapter/10.1007/978-3-319-96661-8_27" target="_blank" rel="noopener noreferrer">Read the paper ↗</a>
+              <a href="https://www.media.mit.edu/projects/cityscope-volpe/overview/" target="_blank" rel="noopener noreferrer">Project overview at MIT ↗</a>
+              <a href="https://www.media.mit.edu/projects/cityscope-volpe/publications/" target="_blank" rel="noopener noreferrer">Publications at MIT ↗</a>
+            </div>
+          </div>
+        </section>
+
+        <!-- Pre-form -->
+        <section id="window-preform" class="window large surface guide" data-guide="preform" role="dialog" hidden>
+          <div class="body page" data-page="table">
+            <h1>Development on the site</h1>
+            <p class="lede">Choose what is built on each of the site's five segments, and see it on the table.</p>
+            <div class="lead">
+              <button id="preform-toggle" class="big" aria-pressed="false">Show on the table</button>
+              <p class="state-line">Development graphs on the site: <b id="preform-state">Off</b></p>
+            </div>
+            <h3 style="margin-top: 16px">Site segments</h3>
+            <p id="development-lock" class="note" hidden></p>
+            <div id="development" class="segments"></div>
+            <input id="development-file" type="file" accept=".json,application/json" />
+            <button class="how-link" data-goto="how">How does it work?</button>
+          </div>
+          <div class="body page" data-page="how" hidden>
+            <h1>A program for each segment</h1>
+            <p class="lede">The Volpe site is divided into five segments. Each can hold a development program, drawn on the table as a graph of its towers and plinths.</p>
+            <div class="steps" role="list" aria-label="From a program to the table">
+              <div class="step" role="listitem"><span class="name">Choose a program</span><span class="detail">One per segment, or a graph file</span></div>
+              <svg class="link" viewBox="0 0 28 16" aria-hidden="true"><path d="M2 8 H24 M18 3 L24 8 L18 13" /></svg>
+              <div class="step" role="listitem"><span class="name">Check its rules</span><span class="detail">The central repository's own</span></div>
+              <svg class="link" viewBox="0 0 28 16" aria-hidden="true"><path d="M2 8 H24 M18 3 L24 8 L18 13" /></svg>
+              <div class="step" role="listitem"><span class="name">Place it</span><span class="detail">Its graph on the segment</span></div>
+            </div>
+            <p>A program that breaks a rule is refused, and the reason is said; nothing is shown as placed before it passes. The same graphs can come from the menus, from a file, or from the reference application.</p>
+            <button class="how-link" data-goto="research">Read the research</button>
+          </div>
+          <div class="body page research-view" data-page="research" hidden>
+            <h1>Behind Pre-form</h1>
+            <cite>Preformative design model</cite>
+            <p class="missing">The research explanation and sources for Pre-form are not available in this app yet. They will appear here once they are provided; nothing is written in their place.</p>
+          </div>
+        </section>
+
+        <!-- H-ABM -->
+        <section id="window-habm" class="window large surface guide" data-guide="habm" role="dialog" hidden>
+          <div class="body page" data-page="table">
+            <h1>The day on the table</h1>
+            <p class="lede">Show the synthetic population moving through its day, and read what it is doing now.</p>
+            <div class="lead">
+              <button id="habm-table" class="big" aria-expanded="false" aria-controls="habm-layers">Show on the table</button>
+            </div>
+            <fieldset id="habm-layers" class="toggles" style="border: 0; padding: 0; margin: 10px 0 0" hidden>
+              <legend class="visually-hidden">Layers on the table</legend>
+            </fieldset>
+            <h3 style="margin-top: 14px">Agents</h3>
+            <dl id="habm-counts" class="counts"></dl>
+            <h3>On the table · <span id="data-time"></span></h3>
+            <div id="data-bars" class="bars" role="img" aria-label="People on the table by what they are doing"></div>
+            <p id="data-note" class="note"></p>
+            <div class="row" style="margin-top: 6px"><button class="pick-agent">Select an agent</button></div>
+            <p class="note">Or tap an agent on the table to open their profile.</p>
+            <p class="note">Close to the table, people on foot and on bicycles become figures, those driving become cars, and those on transit ride the buses and trains drawn on the MBTA's weekday schedule (GTFS). The freight train, the EZRide shuttle and the boats on the Broad Canal run on illustrative times. Map data © OpenStreetMap contributors.</p>
+            <h3>Flows</h3>
+            <dl id="flow-counts" class="counts"></dl>
+            <p class="note">Trips between the H3 cells of resolution 8 on the table (about 0.9 km across), in the hour of the time shown, all modes together, as the population's data counts them. Trips within one cell are not counted.</p>
+            <h3>Occupancy</h3>
+            <dl id="occupancy-counts" class="counts"></dl>
+            <p class="note">People present in places (not travelling), per H3 cell of resolution 9 on the table (about 0.35 km across), in the 10-minute slot of the time shown. A cell's height is its share of the busiest slot of the day.</p>
+            <button class="how-link" data-goto="how">How does it work?</button>
+          </div>
+          <div class="body page" data-page="how" hidden>
+            <h1>Inside a simulated decision.</h1>
+            <p class="lede">An agent observes its context, considers what to do, and acts; what it does changes the context it observes next.</p>
+            <div class="cycle" role="list" aria-label="The decision cycle">
+              <div class="node" role="listitem"><b>Context</b><span>Observe</span></div>
+              <svg class="link" viewBox="0 0 28 16" aria-hidden="true"><path d="M2 8 H24 M18 3 L24 8 L18 13" /></svg>
+              <div class="node cognition" role="listitem"><b>Cognition</b><span>Consider</span></div>
+              <svg class="link" viewBox="0 0 28 16" aria-hidden="true"><path d="M2 8 H24 M18 3 L24 8 L18 13" /></svg>
+              <div class="node" role="listitem"><b>Action</b><span>Act</span></div>
+            </div>
+            <div class="loop" aria-hidden="true">
+              <svg viewBox="0 0 300 26" preserveAspectRatio="none"><path d="M270 2 C270 22 30 22 30 4 M24 10 L30 3 L36 10" /></svg>
+            </div>
+            <p class="note" style="text-align: center; margin: 0">The action updates the context.</p>
+            <div class="modules" aria-label="Optional modules connected to cognition"><span>Memory · optional</span><span>Emotions · optional</span></div>
+            <p>H-ABM is a modular conceptual framework for bringing cognition supported by large language models into agent-based models. This cycle is an editorial summary of it, not its full technical diagram; memory and emotions are modules a model may add to cognition.</p>
+            <p class="scope">Conceptual research framework. Active modules depend on the running implementation.</p>
+            <button class="how-link" data-goto="research">Read the research</button>
+          </div>
+          <div class="body page research-view" data-page="research" hidden>
+            <h1>Behind H-ABM</h1>
+            <cite>Humanized Agent-based Models: a Framework</cite>
+            <p class="by">Version 3 · 11 September 2025 · Preprint</p>
+            <details>
+              <summary>From data to urban patterns</summary>
+              <p>On this table, each agent of a synthetic population follows a recorded day of activities and trips. Occupancy and flows add up those same records: people present in places, and trips between places.</p>
+              <p>The layers show these records as they are. They do not show the reasoning behind them.</p>
+            </details>
+            <details>
+              <summary>Research scope</summary>
+              <p>Version 3 of the paper proposes the framework. It does not show that the agents exported to this app use its modules, and it does not offer a predictive validation of this population.</p>
+              <p>A routine or a walking animation does not establish that an agent has memory, emotions or individual reasoning. Which modules are active depends on the implementation that runs.</p>
+            </details>
+            <details>
+              <summary>Paper and authors</summary>
+              <p>Humanized Agent-based Models: a Framework. Version 3, 11 September 2025, a preprint on TechRxiv. The full list of authors is at the source.</p>
+            </details>
+            <div class="sources">
+              <a href="https://www.techrxiv.org/doi/full/10.36227/techrxiv.172349445.53365209/v3" target="_blank" rel="noopener noreferrer">Read the paper on TechRxiv ↗</a>
+              <a href="https://www.media.mit.edu/projects/humanizing-agent-based-models-h-abm/overview/" target="_blank" rel="noopener noreferrer">The project at MIT ↗</a>
+            </div>
+          </div>
+        </section>
+
+        <!-- How do we decide? -->
+        <section id="window-vote" class="window large surface guide" data-guide="vote" role="dialog" hidden>
+          <div class="body page" data-page="table">
+            <h1>A vote on the table</h1>
+            <p class="lede">Preview an example of one person's vote, split three ways, on the site.</p>
+            <div class="lead">
+              <button id="vote-preview" class="big" aria-pressed="false">Show demo preview</button>
+              <p class="state-line">Demo preview: <b id="vote-preview-state">Off</b></p>
+              <span class="tag">Illustrative demo — not live voting.</span>
+            </div>
+            <div id="vote-demo" hidden>
+              <h3 style="margin-top: 14px">Routes of one vote</h3>
+              <div id="vote-chips" class="routes" role="group" aria-label="Pick out a route on the table"></div>
+              <p id="vote-chip-explanation" class="explanation" aria-live="polite"></p>
+              <p class="note">Option A 60% · Option B 40% · still one vote. Nothing is cast or stored.</p>
+            </div>
+            <button class="how-link" data-goto="how">How does it work?</button>
+          </div>
+          <div class="body page overview-body" data-page="how" hidden>
+            <div class="heading">
+              <h1 id="vote-heading">One vote.<br />More ways to have a say.</h1>
+              <p class="lede">People can support options directly, and also through people they trust or shared priorities. Their contributions propagate through a network.</p>
+            </div>
+            <div class="flow">
+              <div class="source"><b>1</b><span>Your vote</span></div>
+              <svg class="connectors" viewBox="0 0 300 34" preserveAspectRatio="none" aria-hidden="true">
+                <defs>
+                  <marker id="arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                    <path d="M0 0 L8 4 L0 8 z" fill="#a0adbf" />
+                  </marker>
+                </defs>
+                <path d="M150 0 C150 18 50 14 50 32" stroke="#53d4f5" marker-end="url(#arrow)" />
+                <path d="M150 0 L150 32" stroke="#b495ed" marker-end="url(#arrow)" />
+                <path d="M150 0 C150 18 250 14 250 32" stroke="#ebba72" marker-end="url(#arrow)" />
+              </svg>
+              <div id="vote-routes" class="routes" role="group" aria-label="Where your vote goes"></div>
+              <p id="vote-explanation" class="explanation" aria-live="polite"></p>
+            </div>
+            <div class="results">
+              <h3><span>Where your vote ends up</span><span class="kept">Still 1 vote</span></h3>
+              <div id="vote-results"></div>
+              <p class="closing">Your preference and your trust can count together.</p>
+            </div>
+            <p class="note">A teaching example, not the method's full mathematical formulation. Housing's equal split belongs to this example; it is not a rule of the method.</p>
+            <button class="how-link" data-goto="research">Read the research</button>
+          </div>
+          <div class="body page research-view" data-page="research" hidden>
+            <h1>Behind the vote</h1>
+            <cite>A New Town Scale Consensus: Propagational Voting in Urban Decision Making</cite>
+            <p class="by">Yasushi Sakai · MIT doctoral thesis · 2025</p>
+            <details>
+              <summary>How it works · pp. 51–62</summary>
+              <p>Each person starts with one divisible vote. Shares can be allocated to proposals, trusted people or groups, and policy categories. Delegated shares follow the recipients’ recorded allocations through the network, ending at concrete proposals.</p>
+              <p>The model uses an absorbing Markov chain to calculate proposal support. It can also analyze the influence of people and intermediaries. A support distribution does not by itself determine which policy is adopted.</p>
+              <p>In this example, the trusted person directs their received share to Option B. The housing category divides its received share equally between Options A and B. Only the original person’s vote is traced.</p>
+            </details>
+            <details>
+              <summary>Pilot evidence · pp. 97–133</summary>
+              <p>The thesis explores the mechanism through a Boston urban-planning survey and participatory workshops. These studies examine how people express preferences, delegate, and influence proposal support. They provide exploratory evidence at small civic scales.</p>
+            </details>
+            <details>
+              <summary>Limits &amp; open questions · pp. 141–147</summary>
+              <p>Scale, voter identity, privacy, intermediary design, and concentrated influence remain open research questions. The mechanism does not guarantee agreement or prevent power concentration.</p>
+              <p>Closed delegation loops with no route to a proposal require explicit handling; the thesis discusses this exception on p. 68.</p>
+            </details>
+            <h3>Related publication</h3>
+            <cite>Propagational Proxy Voting</cite>
+            <p class="by">Yasushi Sakai · Parfait Atchade-Adelomou · Ryan Jiang · Luis Alonso · Kent Larson · Ken Suzuki</p>
+            <ul class="pub-facts">
+              <li>arXiv preprint · April 2025</li>
+              <li>Social and Information Networks</li>
+              <li>DOI: 10.48550/arXiv.2504.13641</li>
+            </ul>
+            <details>
+              <summary>The idea: when groups combine</summary>
+              <p>One vote, split into fractions, can go to proposals, to other people, and to “sets containing proposals and participants”: groups and categories that bring them together.</p>
+              <p>This is where it becomes most interesting. A group passes on what it receives, so trust in people and priorities between proposals combine across layers, as a party shares its votes among its members. In the paper's words, “intermediary nodes, such as categories or groups, play a significant role in collective decision outcomes.”</p>
+            </details>
+            <details>
+              <summary>Open questions</summary>
+              <p>How a group should pass on what it receives is still open, and the calculation grows costly at large scale.</p>
+            </details>
+            <div class="sources">
+              <a href="https://dspace.mit.edu/entities/publication/e1b484d4-a007-4cd6-a17f-27545a3c6baa" target="_blank" rel="noopener noreferrer">Read the research ↗</a>
+              <a href="https://arxiv.org/abs/2504.13641" target="_blank" rel="noopener noreferrer">Propagational Proxy Voting on arXiv ↗</a>
+              <a href="https://arxiv.org/pdf/2504.13641" target="_blank" rel="noopener noreferrer">The paper (PDF) ↗</a>
+              <a href="https://www.media.mit.edu/events/yasushi-sakai-dissertation-defense/" target="_blank" rel="noopener noreferrer">Dissertation defense ↗</a>
+            </div>
+          </div>
+        </section>
+
+        <!-- Where's my Jarvis? -->
+        <section id="window-jarvis" class="window large surface guide jarvis" data-guide="jarvis" role="dialog" hidden>
+          <div class="body page" data-page="table">
+            <h1>Try it on the table</h1>
+            <p class="lede">Pick a request the app supports, and see the answer on the table.</p>
+            <ul id="jarvis-try" class="try" aria-label="Commands to try"></ul>
+            <p id="jarvis-try-result" class="explanation" aria-live="polite"></p>
+            <button class="how-link" data-goto="how">How does it work?</button>
+          </div>
+          <div class="body page" data-page="how" hidden>
+            <h1>From a question to the table</h1>
+            <p class="lede">A spoken question about a place becomes a visualization in space, in three steps.</p>
+            <figure class="ask">
+              <figcaption>You ask</figcaption>
+              <q>Where do people spend time?</q>
+            </figure>
+            <div id="jarvis-steps" class="steps" role="group" aria-label="From a question to a spatial answer">
+              <button class="step" data-step="ask" aria-pressed="false">
+                <svg class="wave" viewBox="0 0 96 48" aria-hidden="true"><rect x="6" y="20" width="3" height="8" rx="1.5" /><rect x="13" y="16" width="3" height="16" rx="1.5" /><rect x="20" y="11" width="3" height="26" rx="1.5" /><rect x="27" y="17" width="3" height="14" rx="1.5" /><rect x="34" y="7" width="3" height="34" rx="1.5" /><rect x="41" y="13" width="3" height="22" rx="1.5" /><rect x="48" y="4" width="3" height="40" rx="1.5" /><rect x="55" y="15" width="3" height="18" rx="1.5" /><rect x="62" y="10" width="3" height="28" rx="1.5" /><rect x="69" y="18" width="3" height="12" rx="1.5" /><rect x="76" y="14" width="3" height="20" rx="1.5" /><rect x="83" y="19" width="3" height="10" rx="1.5" /><rect x="90" y="22" width="3" height="4" rx="1.5" /></svg>
+                <span class="name">Ask aloud</span><span class="detail">Your question</span>
+              </button>
+              <svg class="link" viewBox="0 0 28 16" aria-hidden="true"><path d="M2 8 H24 M18 3 L24 8 L18 13" /></svg>
+              <button class="step" data-step="find" aria-pressed="false">
+                <svg class="records" viewBox="0 0 96 48" aria-hidden="true"><g class="miss"><rect x="8" y="4" width="8" height="7" rx="1.5" /><rect x="20" y="4" width="64" height="7" rx="1.5" /></g><g class="hit"><rect x="8" y="15" width="8" height="7" rx="1.5" /><rect x="20" y="15" width="56" height="7" rx="1.5" /></g><g class="hit"><rect x="8" y="26" width="8" height="7" rx="1.5" /><rect x="20" y="26" width="68" height="7" rx="1.5" /></g><g class="miss"><rect x="8" y="37" width="8" height="7" rx="1.5" /><rect x="20" y="37" width="48" height="7" rx="1.5" /></g></svg>
+                <span class="name">Find the data</span><span class="detail">Relevant information</span>
+              </button>
+              <svg class="link" viewBox="0 0 28 16" aria-hidden="true"><path d="M2 8 H24 M18 3 L24 8 L18 13" /></svg>
+              <button class="step" data-step="show" aria-pressed="false">
+                <svg class="space" viewBox="0 0 96 48" aria-hidden="true">
+                  <path class="ground" d="M48 6 L90 24 L48 42 L6 24 Z M34 12 L76 30 M20 18 L62 36 M62 12 L20 30 M76 18 L34 36" />
+                  <path class="block" d="M76 18 L90 24 L76 30 L62 24 Z M62 24 L62 20 L76 14 L90 20 L90 24 M76 14 L76 18" />
+                  <path class="lit side" d="M34 12 L48 18 L48 30 L34 24 Z" />
+                  <path class="lit side" d="M48 18 L62 12 L62 24 L48 30 Z" />
+                  <path class="lit top" d="M48 6 L62 12 L48 18 L34 12 Z" />
+                </svg>
+                <span class="name">See it in space</span><span class="detail">A situated visualization</span>
+              </button>
+            </div>
+            <p id="jarvis-explanation" class="explanation" aria-live="polite"></p>
+            <p class="closing">A spoken question leads to the relevant information, and the answer arrives in space together with its explanation.</p>
+            <p class="note">An agent's route is one concrete use: it appears only when it is asked for. Illustrative example · no live data.</p>
+            <button class="how-link" data-goto="research">Read the research</button>
+          </div>
+          <div class="body page research-view" data-page="research" hidden>
+            <h1>Behind the conversation</h1>
+            <cite>Conversational Spatial Analytics in Augmented Reality</cite>
+            <p class="by">City Science · MIT Media Lab · Project contact: Matti Gruener</p>
+            <details>
+              <summary>The research concept</summary>
+              <p>The project explores voice-based access to spatial data in augmented reality. An agent retrieves relevant information in near real time and presents a visualization anchored to the surrounding space.</p>
+            </details>
+            <details>
+              <summary>Supported interactions</summary>
+              <p>Available in this app now: specific commands that show or hide layers, select an agent and draw their route, and open the research guides. They are typed in the conversation until the voice assistant is connected.</p>
+              <p>The project's overview describes specific queries and filtered views, and outlines future support for open-ended questions. This app does not answer open-ended questions.</p>
+            </details>
+            <details>
+              <summary>Open questions</summary>
+              <p>Does this improve learning, insight, speed, or access to complex data? Can it support meaningful policy change? These remain research questions.</p>
+            </details>
+            <div class="sources">
+              <a href="https://www.media.mit.edu/projects/conversational-spatial-analytics/overview/" target="_blank" rel="noopener noreferrer">Explore the project at MIT ↗</a>
+            </div>
+          </div>
+        </section>
+
+        <!-- The selected agent's card -->
+        <section id="window-agent" class="window large surface guide card" role="dialog" aria-labelledby="agent-title" hidden>
+          <header>
+            <div class="guide-title">
+              <p id="agent-title" class="guide-name">Agent profile</p>
+              <p id="agent-id" class="guide-by"></p>
+            </div>
+            <button class="quiet close" aria-label="Close agent profile">Close</button>
+          </header>
+          <div class="body">
+            <p id="agent-missing" class="missing" hidden></p>
+            <div id="agent-content">
+              <div class="card-top">
+                <figure class="portrait">
+                  <canvas id="agent-portrait" aria-hidden="true"></canvas>
+                  <div id="portrait-fallback" class="fallback" hidden></div>
+                  <figcaption id="portrait-caption" class="visually-hidden"></figcaption>
+                </figure>
+                <section class="now" aria-labelledby="now-title">
+                  <h3 id="now-title">Now · <span id="now-time"></span></h3>
+                  <p id="now-doing" class="doing" aria-live="polite"></p>
+                  <div id="now-trip" hidden>
+                    <div class="progress" role="img" id="now-progress-label"><span id="now-progress"></span></div>
+                    <p id="now-trip-time" class="note"></p>
+                  </div>
+                  <dl id="now-facts" class="facts"></dl>
+                </section>
+              </div>
+              <p class="trail"><span>Route trail:</span> <b id="trail-state">Off</b> <span id="trail-by" class="by"></span></p>
+              <details id="agent-profile">
+                <summary>Profile</summary>
+                <ul id="profile-fields" class="strips"></ul>
+              </details>
+              <details id="agent-day">
+                <summary>Recorded day</summary>
+                <ol id="day-list" class="day"></ol>
+              </details>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <div id="toolbar" class="surface">
+        <nav aria-label="Main navigation">
+          <button id="open-views" aria-haspopup="dialog" aria-controls="window-views" aria-expanded="false">Views</button>
+          <button id="open-research" aria-haspopup="dialog" aria-controls="window-research" aria-expanded="false">Research</button>
+        </nav>
+        <span id="status" role="status"></span>
+        <div class="end">
+          <button id="open-agents" class="agents" aria-haspopup="dialog" aria-controls="window-agents" aria-expanded="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="7" r="3" /><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" /><circle cx="17" cy="8" r="2.4" /><path d="M16 14c2.8 0 5 2.2 5 5" /></svg>
+            Agents
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </body>
+</html>

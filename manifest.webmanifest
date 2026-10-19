@@ -1,0 +1,17 @@
+{
+  "name": "CityScope Volpe AR",
+  "short_name": "CityScope AR",
+  "description": "The CityScope Volpe table's simulation, in 3D and in augmented reality.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "any",
+  "background_color": "#0d1015",
+  "theme_color": "#0d1015",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
