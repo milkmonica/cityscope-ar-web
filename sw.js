@@ -26,7 +26,9 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET" || new URL(request.url).origin !== self.location.origin) return;
   if (request.mode === "navigate") {
     event.respondWith(
-      fetch(request)
+      // Asked of the server every time (no-cache), never taken from the browser's own cache: GitHub
+      // Pages lets a page be kept 10 minutes, and a reload would show the version before the last.
+      fetch(request, { cache: "no-cache" })
         .then((response) => {
           const copy = response.clone();
           caches.open(CACHE).then((cache) => cache.put(request, copy));
