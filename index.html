@@ -99,15 +99,17 @@
       #scene { position: relative; min-width: 0; min-height: 0; border-radius: var(--radius); overflow: hidden; }
       #scene canvas.view { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
 
-      /* The toolbar keeps to one row where it can: the line of status gives way first. Three columns,
-         the outer two of equal width, so that Center view sits in the middle of the screen whatever
-         the groups at either side measure. */
-      #toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); grid-template-areas: "start center end"; align-items: center; gap: 6px var(--gap); padding: 6px; min-width: 0; }
+      /* The toolbar: Views and Research at the left, Agents at the right, and Center view in the
+         middle of the room between them (as far from Research as from Agents). */
+      #toolbar { --button-h: 44px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "start center end"; align-items: center; gap: 6px var(--gap); padding: 6px; min-width: 0; }
       #toolbar > .start { grid-area: start; display: flex; align-items: center; gap: 6px var(--gap); min-width: 0; }
       #toolbar > .end { grid-area: end; justify-self: end; }
       /* Center view: back to the whole model (the camera mode's zoom undone, the 3D view's framing), never the calibration. */
-      #toolbar > .center-view { grid-area: center; justify-self: center; width: 46px; height: 46px; min-height: 46px; padding: 0; border-radius: 8px; color: #9cd5e3; background: rgba(156, 213, 227, 0.08); border: 1px solid rgba(156, 213, 227, 0.45); }
-      #toolbar > .center-view svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+      /* Square, as tall as the bar's other buttons (--button-h follows their height on each screen). */
+      #toolbar > .center-view { grid-area: center; justify-self: center; width: var(--button-h); height: var(--button-h); min-height: var(--button-h); padding: 0; border-radius: 8px; color: #9cd5e3; background: rgba(156, 213, 227, 0.08); border: 1px solid rgba(156, 213, 227, 0.45); }
+      /* No padding of its own (the bar's button rules give some, even !important), and the icon a size that fits the square. */
+      #toolbar > .center-view { padding: 0 !important; }
+      #toolbar > .center-view svg { width: min(22px, calc(var(--button-h) - 12px)); height: min(22px, calc(var(--button-h) - 12px)); fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
       #toolbar > .center-view:hover { background: rgba(156, 213, 227, 0.14); }
       #toolbar > .center-view:focus-visible { outline: 2px solid #9cd5e3; outline-offset: 2px; }
       #toolbar nav, .shortcuts { display: flex; gap: 6px; align-items: center; flex: none; }
@@ -128,9 +130,9 @@
         #status { display: none; }
         body.ar #status, body.camera #status { display: -webkit-box; }
       }
-      /* Too narrow for one row (below the smallest iPhones, 375 px): Center view takes a row of its own, centred, above the other buttons. */
-      @media (max-width: 369px) {
-        #toolbar { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "center center" "start end"; }
+      /* Too narrow for one row (below 300 px): Center view takes a row of its own, centred, above the other buttons. */
+      @media (max-width: 299px) {
+        #toolbar { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "center center center" "start . end"; }
       }
 
       button, label.button, a.button {
@@ -169,6 +171,7 @@
       @media (pointer: coarse) and (max-width: 560px), (pointer: coarse) and (max-height: 560px) {
         #top { min-height: 40px; }
         #toolbar button, #top button:not(.mode) { min-height: 38px; padding: 6px 12px; font-size: 14px; }
+        #toolbar { --button-h: 38px; }
         .brand .name { font-size: 13px; }
       }
       /* A phone lying on its side in a browser with its own bars (Safari keeps its tabs and address
@@ -178,6 +181,7 @@
         #top { min-height: 32px !important; padding: 1px 4px 1px 8px !important; }
         #toolbar { padding: 2px 4px !important; }
         #toolbar button, #top button { min-height: 30px !important; padding: 3px 10px !important; font-size: 13px !important; }
+        #toolbar { --button-h: 30px !important; }
         .brand .name { font-size: 12px; }
         .brand button.mode { min-height: 26px !important; padding: 2px 9px !important; font-size: 12px !important; }
         #clock { font-size: 14px; }
@@ -211,6 +215,7 @@
         #top { top: max(var(--gap), env(safe-area-inset-top)); min-height: 38px; padding: 2px 4px 2px 10px; }
         #toolbar { bottom: max(var(--gap), env(safe-area-inset-bottom)); padding: 3px 4px; }
         #toolbar button, #top button { min-height: 34px; }
+        #toolbar { --button-h: 34px; }
         #status, body.ar #status { display: none !important; }
         #scene { border-radius: 0; }
         .window { top: 54px; max-height: calc(100% - 66px - var(--bar-h, 42px)); }
@@ -648,9 +653,9 @@
         @keyframes appear { from { opacity: 0; transform: translateY(-4px); } }
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-Cy3ygvbM.js"></script>
+    <script type="module" crossorigin src="./assets/index-Bc_Rejo9.js"></script>
   </head>
-  <body data-version="00:21 · 2e2ce5e">
+  <body data-version="00:24 · d86fb1e">
     <div id="app">
       <header id="top" class="surface">
         <div class="brand">
