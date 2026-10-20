@@ -24,6 +24,8 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const request = event.request;
   if (request.method !== "GET" || new URL(request.url).origin !== self.location.origin) return;
+  // The live hub's address (hub.json) changes while the page is open: never kept.
+  if (new URL(request.url).pathname.endsWith("/hub.json")) return;
   if (request.mode === "navigate") {
     event.respondWith(
       // Asked of the server every time (no-cache), never taken from the browser's own cache: GitHub
