@@ -501,6 +501,21 @@
       /* "Active": a quiet check and word in pastel cyan, information only. On a narrow entry it takes its own line, on the right. */
       .entry .active { flex: none; margin-left: auto; display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 500; color: #9adff0; }
       .entry .active svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+      /* The mark is a button of its own laid over the room kept for it in the title's row ("Turn off" wide, so
+         neither word moves the title): "Active", and "Turn off" under the pointer or the focus, which turns the
+         research's view off without opening its window. 44 px tall, from the entry's top right. */
+      .entries > li { position: relative; }
+      .entry .active.room { visibility: hidden; }
+      .active-off {
+        position: absolute; top: 3px; right: 0; min-height: 44px; height: 44px; padding: 0 14px; margin: 0; border: 0; border-radius: 12px;
+        background: none; box-shadow: none; display: inline-flex; align-items: center; font-size: 13px; font-weight: 500; color: #9adff0; cursor: pointer;
+      }
+      .active-off > span { display: inline-flex; align-items: center; gap: 4px; }
+      .active-off svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+      .active-off .off { display: none; }
+      .active-off:hover .on, .active-off:focus-visible .on { display: none; }
+      .active-off:hover .off, .active-off:focus-visible .off { display: inline-flex; }
+      .active-off:hover, .active-off:focus-visible { color: #e8edf5; background: none; }
       .entry .subtitle { font-size: 14px; color: var(--text); opacity: 0.85; }
       .entry .credits { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
       .entry .subtitle:empty { display: none; }
@@ -758,9 +773,9 @@
         @keyframes appear { from { opacity: 0; transform: translateY(-4px); } }
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-B7Ll3DUC.js"></script>
+    <script type="module" crossorigin src="./assets/index-B6E78VlT.js"></script>
   </head>
-  <body data-version="17:22 · 711db3f">
+  <body data-version="19:24 · c2130e7">
     <div id="app">
       <header id="top" class="surface">
         <div class="brand">
@@ -1293,6 +1308,6 @@
         </div>
       </div>
 
-    </div>
+    </div>
   </body>
 </html>
