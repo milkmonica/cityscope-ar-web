@@ -398,7 +398,8 @@
       /* The research windows open at the top right, so that the table shows beside them and what is
          picked in them can be followed on it; their header drags them away (src/ui.ts). With the voting
          demo on the table (docked) the window takes only the height its content needs; on an upright
-         scene it spans the width, at the top, and leaves the lower part of the table in view. */
+         scene it spans the width and the height, with the same margin all round (the docked voting
+         window keeps its own height, the demo below it). */
       .window.research { left: auto; right: var(--gap); width: min(400px, calc(100% - 2 * var(--gap))); }
       .window.research.docked { height: auto; max-height: calc(100% - 2 * var(--gap) - var(--key-room, 0px)); container-type: inline-size; }
       .window.research > header { cursor: grab; touch-action: none; }
@@ -406,7 +407,9 @@
       .window.research.dragging { user-select: none; }
       .window.research.dragging > header { cursor: grabbing; }
       @container scene (max-aspect-ratio: 1 / 1) {
-        .window.research { left: var(--gap); right: auto; width: calc(100% - 2 * var(--gap)); height: min(700px, 58%); }
+        .window.research { left: var(--gap); right: auto; width: calc(100% - 2 * var(--gap)); height: calc(100% - 2 * var(--gap) - var(--key-room, 0px)); }
+        /* Covering the table, it lets more of it show through: 60% and a lighter blur (chosen from three, 2026-10-20). */
+        .window.research.surface { background: rgba(21, 28, 38, 0.6); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
         .window.research.docked { height: auto; max-height: 52%; }
       }
       .window.card { width: min(520px, calc(100% - 2 * var(--gap))); }
@@ -773,9 +776,9 @@
         @keyframes appear { from { opacity: 0; transform: translateY(-4px); } }
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-u3V9N8PI.js"></script>
+    <script type="module" crossorigin src="./assets/index-CftHlan-.js"></script>
   </head>
-  <body data-version="19:27 · 79215b0">
+  <body data-version="19:33 · fff0e38">
     <div id="app">
       <header id="top" class="surface">
         <div class="brand">
