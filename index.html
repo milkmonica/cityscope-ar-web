@@ -470,6 +470,8 @@
       .segments { display: grid; gap: 6px; }
       .segments label { display: grid; grid-template-columns: 12px 5.5em minmax(0, 1fr); align-items: center; gap: 8px; }
       .segments .swatch { width: 12px; height: 12px; border-radius: 3px; }
+      .segments .live { grid-column: 2 / -1; font-size: 12px; color: var(--muted); }
+      .segments .live:empty { display: none; }
       .segments select { min-height: 44px; min-width: 0; padding: 0 8px; font: inherit; color: var(--text); border: 1px solid var(--line); border-radius: 8px; background: rgba(8, 11, 17, 0.6); }
       .bars { display: grid; gap: 8px; }
       .bar { display: grid; grid-template-columns: 7.5em 1fr 4.5em; align-items: center; gap: 8px; font-size: 13px; }
@@ -756,9 +758,9 @@
         @keyframes appear { from { opacity: 0; transform: translateY(-4px); } }
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-CQ9LNzQZ.js"></script>
+    <script type="module" crossorigin src="./assets/index-DuxnHXJv.js"></script>
   </head>
-  <body data-version="18:47 · 0c78342">
+  <body data-version="17:05 · edf5fa7">
     <div id="app">
       <header id="top" class="surface">
         <div class="brand">
@@ -958,6 +960,7 @@
               <p class="state-line">Development graphs on the site: <b id="preform-state">Off</b></p>
             </div>
             <h3 style="margin-top: 16px">Site segments</h3>
+            <p id="preform-hub" class="note" hidden></p>
             <p id="development-lock" class="note" hidden></p>
             <div id="development" class="segments"></div>
             <input id="development-file" type="file" accept=".json,application/json" />
@@ -1290,6 +1293,6 @@
         </div>
       </div>
 
-    </div>
+    </div>
   </body>
 </html>
